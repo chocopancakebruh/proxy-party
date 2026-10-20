@@ -1,0 +1,61 @@
+# Node.js dependencies
+server/node_modules/
+node_modules/
+
+# Test files
+server/.test-tokens/
+server/.test-tokens-integration/
+coverage/
+
+# OAuth tokens
+.claude-code-proxy/
+**/kimi_token.txt
+**/.credentials.json
+**/credentials.json
+**/tokens*.json
+**/.argon-route-test-*/
+*.bak
+server/server-old.js
+server/server2.js
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+.claude
+
+# Local connection registry and independent account profiles (credentials)
+server/data/
+
+# Machine-specific settings and local environment secrets
+/server/config.txt
+.env
+.env.*
+!.env.example
+.npmrc
+*.pem
+*.key
+*.p12
+*.pfx
+**/auth.json
+**/oauth_creds.json
+**/*token*.txt
+**/*.signed-out
+
+# Local prompts, exports, credential captures, and historical snapshots
+/server/presets/*.json
+/Silly Tavern presets/
+before-*/
+**/*.before-*
+*.patch
+*.zip
+temp_capture_for_*

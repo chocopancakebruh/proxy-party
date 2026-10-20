@@ -1,0 +1,42 @@
+{
+  "name": "claude-code-proxy",
+  "version": "1.0.0",
+  "description": "A proxy server for Claude Code API with standalone OAuth authentication",
+  "main": "server/server.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node server/server.js",
+    "test": "npm run test:unit && npm run test:node",
+    "test:unit": "jest --runInBand",
+    "test:node": "node --test server/*.node-test.cjs",
+    "test:watch": "node --test --watch server/*.node-test.cjs",
+    "test:coverage": "jest --runInBand --coverage && node --experimental-test-coverage --test server/*.node-test.cjs"
+  },
+  "keywords": [
+    "claude",
+    "anthropic",
+    "proxy",
+    "oauth"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "supertest": "^6.3.4",
+    "nock": "^13.5.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "server/**/*.js",
+      "!server/**/*.test.js"
+    ],
+    "testMatch": [
+      "**/__tests__/**/*.js",
+      "**/?(*.)+(spec|test).js"
+    ]
+  }
+}

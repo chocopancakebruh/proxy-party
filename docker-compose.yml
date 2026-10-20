@@ -1,0 +1,16 @@
+services:
+  claude-proxy:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm install --only=production 2>/dev/null || true && node server/server.js"
+    ports:
+      - "127.0.0.1:42069:42069"
+    volumes:
+      - ~/.claude:/root/.claude
+      - ~/.claude-code-proxy:/root/.claude-code-proxy
+      - .:/app
+    environment:
+      - NODE_ENV=production
+      - CLAUDE_PROXY_HOST=0.0.0.0
+      - CLAUDE_PROXY_KEY=${CLAUDE_PROXY_KEY:?Set CLAUDE_PROXY_KEY before starting the container}
+
