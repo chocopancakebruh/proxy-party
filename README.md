@@ -1,23 +1,126 @@
-# Claude Code Proxy
+# Proxy Party
 
-A local proxy exposing Anthropic-style message endpoints for independently added Claude, Kimi, Codex, Grok, Antigravity, MiMo Code, and Meta Muse Code connections. Add multiple accounts from the dashboard; Argon currently supports one system-account connection. Clients such as SillyTavern should use their Anthropic/Claude API mode.
+Proxy Party connects your AI accounts to clients such as SillyTavern through a local Anthropic-compatible API. Manage Claude, Kimi, Codex, Grok, Antigravity (Argon), MiMo Code, and Meta Muse Code from one dashboard.
+
+Click **+ Add provider** to add a connection, sign in, and copy its URL into your client. You can add the same provider more than once to use separate accounts. Argon currently supports one system-account connection.
 
 Claude routes forward structured Anthropic requests. CLI adapters translate conversations into CLI sessions and return text/reasoning as Anthropic-style JSON or server-sent events.
 
-## Quick start
+## Installation and first run
 
-Use Node.js 22 or newer. First copy `server/config.example.txt` to `server/config.txt` and adjust your local settings. `config.txt` is intentionally ignored by Git. Then, from the repository directory:
+### 1. Install the prerequisites
+
+- Install [Node.js](https://nodejs.org/en/download), version **22 or newer**, including npm. A supported LTS release is recommended. Open a new terminal after installation so it can find the commands.
+- Have an account with each provider you want to use, with access to the intended models. Proxy Party does not include accounts, subscriptions, or credits.
+- For providers other than Claude, install the relevant provider CLI separately. See [provider setup](#provider-setup) below. Claude's dashboard sign-in does not require the Claude Code CLI.
+
+### 2. Download and extract the project
+
+On [the GitHub repository](https://github.com/chocopancakebruh/proxy-party), select **Code → Download ZIP**, then extract the ZIP into a normal folder. On Windows, use **Extract All**. Open the extracted folder containing `package.json`, `server`, and the launch scripts; GitHub usually names it `proxy-party-main`.
+
+Open a terminal in that folder. Do not run the project from inside the ZIP or from the parent folder.
+
+If you already use Git, you can download it this way instead:
+
+```shell
+git clone https://github.com/chocopancakebruh/proxy-party.git
+cd proxy-party
+```
+
+### 3. Create your config, install dependencies, and start
+
+Run the commands for your operating system from the project folder. The copy command is for your **first installation**: if you already have `server/config.txt`, keep it.
+
+**Windows — PowerShell**
+
+```powershell
+node --version
+npm.cmd --version
+Copy-Item .\server\config.example.txt .\server\config.txt
+npm.cmd ci
+npm.cmd start
+```
+
+`npm.cmd` avoids PowerShell trying to run the `npm.ps1` wrapper on computers that restrict scripts.
+
+**macOS / Linux — terminal**
 
 ```sh
+node --version
+npm --version
+cp server/config.example.txt server/config.txt
 npm ci
 npm start
 ```
 
-On Windows, use `run-tray.bat` for a background proxy with a notification-area icon. `run.bat` remains available for a normal console, and `run.sh` works on Unix. Settings are read from your local `server/config.txt`; the archive includes `server/config.example.txt` as a starting point. The default listen address is `127.0.0.1:42069`.
+Wait for `npm ci` to finish successfully before starting the server. It installs the project's dependencies; it does not install provider CLIs.
 
-The account dashboard opens automatically at `http://127.0.0.1:42069/dashboard/`. Use it to check saved authentication, sign in, refresh Claude credentials, or reset one Claude account and sign in again. Each account has separate login state and token storage.
+The example configuration is ready for use on this computer: it listens at `127.0.0.1:42069` and does not require a local proxy key. Your `server/config.txt` is intentionally excluded from Git and is not included in the download. See [Configuration](#configuration) to change settings.
 
-For CLI-backed routes, install the relevant CLI first. The dashboard can launch supported CLI sign-in flows in a separate terminal; the CLI owns its credentials. The proxy does not install CLIs. A missing CLI, unavailable model, or expired CLI login is returned as a request error.
+### 4. Open the dashboard and sign in
+
+The dashboard should open automatically. If it does not, visit **http://127.0.0.1:42069/dashboard/** on the same computer running Proxy Party.
+
+1. Choose an existing card, or click **+ Add provider**, select a provider, optionally give the connection a name, and click **Add connection**.
+2. Click that card's **Sign in** button. For Claude, complete the browser authorization and paste the returned code when asked. For a CLI provider on Windows, complete sign-in in the terminal that opens.
+3. Refresh the card's status, then copy its proxy URL for your client. Each additional independent account needs its own sign-in.
+
+A fresh installation starts with eight compatibility cards, including two Claude cards. They are connection slots, not accounts supplied with the download. Remove any you do not need and add as many supported independent connections as you want.
+
+Automatic CLI sign-in terminals currently require Windows. On macOS and Linux, Claude sign-in works in the dashboard, while independent CLI accounts require running the CLI with the connection's profile environment. See [Adding and removing connections](#adding-and-removing-connections) for account isolation and the Argon limitation.
+
+Keep the proxy terminal open while using it. Press **Ctrl+C** in that terminal to stop the server. Closing the dashboard browser does not stop it.
+
+### 5. Connect your chat client
+
+For SillyTavern or another Anthropic-compatible client:
+
+1. Select the client's **Claude / Anthropic** API mode, including when using a non-Claude provider through Proxy Party.
+2. Paste the **base URL copied from the dashboard card** into the client's custom endpoint / proxy URL field. Keep the full path shown on the card; the client appends `/messages`.
+3. If you configured `proxy_api_key`, enter that local proxy key in the client's proxy/API-key field. The default local setup does not require one. Provider sign-in is handled by Proxy Party or the provider CLI.
+4. Select a model available to the account and send a short message. See [Endpoints](#endpoints) for provider-specific model selection.
+
+The default address works when the client backend and Proxy Party run on the same computer. For another computer or a container, see [Local access and LAN use](#local-access-and-lan-use).
+
+### Starting it next time
+
+You only need to create the config once and install dependencies again when updating the project.
+
+- **Windows, console:** double-click `run.bat`, or run `npm.cmd start` from the project folder.
+- **Windows, background tray:** stop any console copy, then double-click `run-tray.bat`. Use the tray icon to open the dashboard or stop the proxy. See [Windows tray and startup](#windows-tray-and-startup) to start it automatically when you sign in.
+- **macOS / Linux:** run `npm start` or `bash run.sh` from the project folder.
+
+## Provider setup
+
+Install only the CLIs for providers you plan to use, following that provider's installation instructions. Their commands must be available on PATH, or configured explicitly in `server/config.txt`. Restart Proxy Party after installing a CLI or changing its command path.
+
+| Provider | Required local command | Sign-in |
+| --- | --- | --- |
+| Claude | None for dashboard OAuth | Use the connection's **Sign in** button |
+| Kimi | `kimi` | Dashboard launches `kimi login` on Windows |
+| Codex | `codex` | Dashboard launches `codex login` on Windows |
+| Grok | `grok` | Dashboard launches `grok login` on Windows |
+| Antigravity / Argon | `agy` | Use the CLI's own account controls; one shared system account |
+| MiMo Code | `mimo` | See [MiMo and Meta Muse setup](#mimo-and-meta-muse-setup) |
+| Meta Muse Code | `muse` | See [MiMo and Meta Muse setup](#mimo-and-meta-muse-setup) |
+
+Use the dashboard's **Sign in** button for each newly added independent CLI connection. Signing in from an ordinary terminal manages your regular CLI account and does not sign in those separate profiles. A missing CLI, expired login, or unavailable model is reported as a request error.
+
+## Troubleshooting installation
+
+| Problem | What to check |
+| --- | --- |
+| `node` or `npm` is not recognized | Install Node.js with npm, then close and reopen the terminal. Check `node --version` and `npm --version` (`npm.cmd --version` in PowerShell). |
+| npm cannot find `package.json` | Open a terminal in the extracted project folder containing `package.json`. |
+| Startup cannot find `server/config.txt` | Copy `server/config.example.txt` to `server/config.txt`. If using File Explorer, show file extensions so it is not accidentally named `config.txt.txt`. |
+| PowerShell says `npm.ps1` cannot run | Use the Windows `npm.cmd` commands above. |
+| The dashboard does not open | Keep the server running and open `http://127.0.0.1:42069/dashboard/` manually. If you changed `port`, use that port in the URL. Check the terminal for startup errors. |
+| `EADDRINUSE` / port already in use | Stop the other copy of the proxy, including a running tray instance, or choose a different `port` in `server/config.txt` and restart. |
+| Provider CLI is missing | Install that provider's CLI, check its command is on PATH, then restart Proxy Party. Custom executable paths can be set in the config. |
+| A new connection is not authenticated | Use **Sign in** on that specific card. A login saved for another card or your ordinary CLI profile does not authenticate a new independent connection. |
+| The tray script is blocked by policy | Use `run.bat` or `npm.cmd start` for console mode. See the tray section for supported hosts and script-policy requirements. |
+
+For updates, stop the proxy first, obtain the new code, and run `npm ci` again (`npm.cmd ci` in PowerShell). Keep your existing `server/config.txt` and `server/data` directory; they contain your local settings and added connections. If switching to a new extracted folder, copy those from your old installation before starting it. Do not replace your config with the example during an update.
 
 ## Adding and removing connections
 
@@ -25,7 +128,7 @@ Click **+ Add provider**, choose a provider, optionally name the connection, the
 
 Argon remains available in the provider picker. While an Argon connection exists, its option is disabled with an explanation; after removal it can be added again using the same system sign-in. Additional isolated Argon subscriptions would require an upstream account-isolation mechanism or separate OS users. See [the official CLI authentication description](https://github.com/google-antigravity/antigravity-cli#authentication).
 
-The first start after this update imports the existing eight cards. Existing Claude token files, CLI sign-ins, configuration, and URLs are preserved. Remove cards you do not need; an empty collection stays empty across restarts. Re-adding a provider creates a fresh connection with a new URL; independent providers also get a fresh profile.
+When there is no saved connection registry, the first start creates the eight original connection cards. On an existing installation, those cards preserve its Claude token files, CLI sign-ins, configuration, and URLs. A fresh download contains no saved sign-ins. Remove cards you do not need; an empty collection stays empty across restarts. Re-adding a provider creates a fresh connection with a new URL; independent providers also get a fresh profile.
 
 New connections use stable URLs such as `/v1/connections/claude-<uuid>`. The client appends `/messages`. New Kimi connections use K3 256K by default; append `/kimi-1m` to that connection's base URL for K3, or `/kimi-256k` for the explicit 256K route.
 
