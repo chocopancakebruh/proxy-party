@@ -1,0 +1,23 @@
+# Copy this file to config.txt before starting the proxy.
+# Keep config.txt local; it may contain keys and machine-specific paths.
+port=42069
+host=127.0.0.1
+log_level=INFO
+auto_open_browser=true
+fallback_to_claude_code=true
+filter_sampling_params=false
+max_body_bytes=16777216
+body_timeout_ms=30000
+claude_timeout_ms=300000
+oauth_timeout_ms=30000
+
+# Optional proxy access key. Set it only in your local config.txt or environment.
+proxy_api_key=
+
+# Optional CLI locations; commands are resolved from PATH by default.
+# kimi_command=kimi
+# codex_command=codex
+# grok_command=grok
+# argon_command=agy
+# mimo_command=mimo
+# muse_command=muse
