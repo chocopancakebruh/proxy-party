@@ -167,6 +167,7 @@ Double-click `run-tray.bat`. The tray starts Node.js in the background without k
 - **Exit tray** stops its owned proxy and removes the icon. Stopping with requests in progress asks for confirmation. Shutdown allows a short grace period, then disconnects remaining requests so the existing provider cleanup can run.
 - **Start with Windows** controls a per-user Startup shortcut. It starts quietly after this Windows account signs in, not before sign-in or as a system service. No administrator account or PowerShell execution-policy change is required. Uncheck the menu item to disable it.
 - The startup shortcut remembers the full Node.js and installation paths. If you move the proxy or replace Node.js at another path, disable and re-enable startup from the new location. An installation-specific mutex prevents duplicate trays for the same folder.
+- Existing startup shortcuts are renamed to **Proxy Party** when the updated tray opens. Saved accounts, connection URLs, and the existing `.claude-code-proxy` credential directory continue to work. The `CLAUDE_PROXY_*` environment variables and health endpoint's `server` identifier retain their original names for compatibility.
 
 Startup can also be managed explicitly from PowerShell in the project folder:
 

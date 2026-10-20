@@ -1,4 +1,5 @@
 @echo off
+title Proxy Party
 setlocal DisableDelayedExpansion
 set "proxyShell="
 for /f "delims=" %%P in ('where.exe pwsh.exe 2^>nul') do if not defined proxyShell set "proxyShell=%%P"
