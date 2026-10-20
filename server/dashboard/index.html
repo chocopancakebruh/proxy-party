@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Proxy Party · Local dashboard</title>
+  <link rel="stylesheet" href="/dashboard/style.css">
+  <script src="/dashboard/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#connections">Skip to connections</a>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="brand" href="/dashboard/" aria-label="Proxy Party home"><span class="brand-mark" aria-hidden="true">↗</span> Proxy Party<span class="brand-period" aria-hidden="true">.</span></a>
+      <div class="topbar-actions"><span class="local-badge"><span aria-hidden="true">●</span> YOUR LOCAL PROXY</span><button class="button button-quiet" id="key-toggle" type="button" aria-controls="key-panel" aria-expanded="false">Proxy key</button></div>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="page-title">
+        <div class="hero-copy"><p class="eyebrow">A LITTLE CONNECTION COLLECTION</p><h1 id="page-title">All your models.<br>One happy place<span class="coral">.</span></h1><p class="hero-description">Sign in, check your accounts, and grab the right URL.<br>No config-file scavenger hunt required.</p></div>
+        <div class="hero-art" aria-hidden="true"><span class="spark spark-one">✳</span><span class="party-ticket ticket-back">LOCAL<br>ONLY</span><span class="party-ticket ticket-front"><span class="ticket-face">:)</span><span>GOOD CONNECTIONS</span></span><span class="spark spark-two">✦</span><span class="art-dot"></span></div>
+      </section>
+
+      <section class="key-panel" id="key-panel" aria-labelledby="key-heading" hidden>
+        <div><h2 id="key-heading">Your proxy access key</h2><p>Enter the key configured for this proxy, not a provider API key. It stays in this tab’s memory and is never saved by this page.</p></div>
+        <form id="key-form"><label class="sr-only" for="proxy-key">Proxy access key</label><input id="proxy-key" type="password" autocomplete="off" spellcheck="false" placeholder="Proxy access key"><button class="button button-dark" type="submit">Use key</button><button class="button button-quiet" id="forget-key" type="button">Forget</button></form>
+      </section>
+
+      <div class="notice" id="notice" role="status" aria-live="polite" aria-atomic="true" hidden><p id="notice-text"></p><button id="dismiss-notice" type="button" aria-label="Dismiss notification">×</button></div>
+
+      <section class="connections" id="connections" aria-labelledby="connections-title">
+        <div class="section-heading"><div><div class="heading-line"><h2 id="connections-title">The connection crew</h2><span class="count-badge" id="connection-count">YOUR CONNECTIONS</span></div><p id="connection-summary">Checking in with your local proxy…</p></div><div class="connection-actions"><button class="button button-outline" id="refresh-all" type="button"><span aria-hidden="true">↻</span> Refresh status</button><button class="button button-dark" id="add-provider" type="button" disabled><span aria-hidden="true">＋</span> Add provider</button></div></div>
+        <div class="provider-grid" id="provider-grid" aria-busy="true"></div>
+        <div class="connections-empty" id="connections-empty" hidden><h3>Your collection starts here</h3><p>Use + Add provider to connect an account. You can add the same provider more than once.</p></div>
+        <div class="status-footer"><p><span class="status-dot" aria-hidden="true"></span><span id="last-checked">Waiting for status</span></p><p>Auto-refreshes every 15 seconds while this tab is active.</p></div>
+      </section>
+
+      <section class="activity-section" aria-labelledby="activity-title">
+        <div class="section-heading activity-heading"><div><div class="heading-line"><h2 id="activity-title">Recent activity</h2><span class="count-badge">LATEST 100 REQUESTS</span></div><p id="activity-summary" aria-live="polite" aria-atomic="true">A little visibility, without your conversation.</p></div><div class="activity-actions"><button class="button button-outline" id="refresh-activity" type="button"><span aria-hidden="true">↻</span> Refresh activity</button><button class="button button-quiet" id="clear-activity" type="button" aria-describedby="activity-clear-note" disabled>Clear history</button></div></div>
+        <p class="activity-privacy">Memory only. Clears when proxy stops. No messages, replies, tokens, or headers recorded.</p>
+        <div class="activity-panel" id="activity-panel" aria-busy="true">
+          <div class="activity-state" id="activity-state" role="status" aria-live="polite" aria-atomic="true" data-state="loading"><span class="activity-state-mark" aria-hidden="true">↗</span><div><h3 id="activity-state-title">Loading recent activity</h3><p id="activity-state-description">Checking your proxy’s in-memory request list…</p></div></div>
+          <div class="activity-table-wrap" id="activity-table-wrap" role="region" aria-label="Recent requests, newest first" tabindex="0" hidden>
+            <table class="activity-table" role="table"><caption class="sr-only">Latest 100 requests, newest first. HTTP status reflects proxy transport, not the contents of a reply.</caption><thead role="rowgroup"><tr role="row"><th scope="col" role="columnheader">Connection</th><th scope="col" role="columnheader">Started</th><th scope="col" role="columnheader">Duration</th><th scope="col" role="columnheader">Delivery</th><th scope="col" role="columnheader">Result</th></tr></thead><tbody id="activity-rows" role="rowgroup"></tbody></table>
+          </div>
+        </div>
+        <div class="status-footer activity-footer"><p id="activity-updated">Updates every 5 seconds while this tab is active.</p><p id="activity-clear-note">Clear history only clears this list. It does not stop requests.</p></div>
+        <p class="activity-transport-note">HTTP status reflects proxy transport; no content recorded.</p>
+      </section>
+
+      <aside class="connection-note" aria-labelledby="connection-note-title"><span class="note-mark" aria-hidden="true">↗</span><div><h2 id="connection-note-title">Next stop: SillyTavern</h2><p>Choose Claude / Anthropic mode, then paste a card’s URL into your custom endpoint. “Saved, unverified” means credentials were found—not that the provider has accepted them.</p></div><span class="note-stamp" aria-hidden="true">MADE FOR<br>LOCAL CHATS</span></aside>
+    </main>
+    <footer class="page-footer"><p>Proxy Party <span aria-hidden="true">✦</span> Your accounts. Your computer.</p><p>Closing this page does not stop the proxy. Use the tray menu to open or stop it.</p></footer>
+  </div>
+
+  <dialog id="add-dialog" class="dialog add-dialog" aria-labelledby="add-title" aria-describedby="add-description">
+    <div class="dialog-heading"><span class="dialog-symbol violet-symbol" aria-hidden="true">＋</span><button class="dialog-close" id="add-close" type="button" aria-label="Close add provider">×</button></div>
+    <p class="eyebrow">ROOM FOR ONE MORE</p><h2 id="add-title">Add a connection</h2><p id="add-description">Choose a provider, then sign in. You can add multiple independent accounts. Argon supports one system-account connection.</p>
+    <form id="add-form"><fieldset class="provider-options" id="provider-options" aria-label="Supported providers"></fieldset><label class="connection-name-label" for="connection-name">Name <span>(optional)</span></label><input id="connection-name" name="label" maxlength="80" autocomplete="off" placeholder="e.g. Claude · Personal"><p class="field-hint">Leave blank for an automatic name. CLI providers require their official CLI to be installed.</p><p class="dialog-feedback" id="add-feedback" role="status" hidden></p><div class="dialog-actions"><button class="button button-outline" id="add-cancel" type="button">Cancel</button><button class="button button-dark" id="add-submit" type="submit">Add connection</button></div></form>
+  </dialog>
+
+  <dialog id="confirm-dialog" class="dialog" aria-labelledby="confirm-title" aria-describedby="confirm-description">
+    <div class="dialog-heading"><span class="dialog-symbol" aria-hidden="true">↺</span><button class="dialog-close" id="confirm-close" type="button" aria-label="Close confirmation">×</button></div>
+    <h2 id="confirm-title">Confirm account change</h2><p id="confirm-description"></p><div class="dialog-actions"><button class="button button-outline" id="confirm-cancel" type="button" autofocus>Cancel</button><button class="button button-danger" id="confirm-accept" type="button">Continue</button></div>
+  </dialog>
+
+  <dialog id="login-dialog" class="dialog login-dialog" aria-labelledby="login-title" aria-describedby="login-description">
+    <div class="dialog-heading"><span class="dialog-symbol violet-symbol" aria-hidden="true">↗</span><button class="dialog-close" id="login-close" type="button" aria-label="Close sign-in dialog">×</button></div>
+    <p class="eyebrow">LET’S GET CONNECTED</p><h2 id="login-title">Finish signing in</h2><p id="login-description">Complete sign-in in the provider’s window. If it gives you a code, paste it here.</p>
+    <a class="button button-outline auth-link" id="authorization-link" target="_blank" rel="noopener noreferrer">Open sign-in page <span aria-hidden="true">↗</span></a>
+    <form id="manual-code-form"><label for="manual-code">Authorization code</label><input id="manual-code" name="code" autocomplete="off" spellcheck="false" placeholder="Paste code or code#state" required><p class="field-hint">Use only the code from this sign-in attempt.</p><p class="dialog-feedback" id="login-feedback" role="status" aria-live="polite" hidden></p><div class="dialog-actions"><button class="button button-quiet" id="check-login" type="button">Already finished? Check status</button><button class="button button-dark" id="submit-code" type="submit">Connect account</button></div></form>
+  </dialog>
+</body>
+</html>
