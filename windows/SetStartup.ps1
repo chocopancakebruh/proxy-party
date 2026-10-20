@@ -64,39 +64,52 @@ function Get-ProxyStartupDetails {
     $startup = [Environment]::GetFolderPath([Environment+SpecialFolder]::Startup)
     if ([string]::IsNullOrWhiteSpace($startup)) { throw 'The per-user Windows Startup folder is unavailable.' }
     $identity = Get-ProxyInstallationId $rootPath
-    $shortcut = [IO.Path]::GetFullPath((Join-Path $startup "Claude Code Proxy-$identity.lnk"))
-    if ([IO.Path]::GetDirectoryName($shortcut) -ne [IO.Path]::GetFullPath($startup).TrimEnd('\')) {
-        throw 'The Startup shortcut path is invalid.'
+    $shortcut = [IO.Path]::GetFullPath((Join-Path $startup "Proxy Party-$identity.lnk"))
+    $legacyShortcut = [IO.Path]::GetFullPath((Join-Path $startup "Claude Code Proxy-$identity.lnk"))
+    foreach ($candidate in @($shortcut, $legacyShortcut)) {
+        if ([IO.Path]::GetDirectoryName($candidate) -ne [IO.Path]::GetFullPath($startup).TrimEnd('\')) {
+            throw 'The Startup shortcut path is invalid.'
+        }
     }
     $shell = Resolve-ProxyPowerShell $HostExecutable
     $trayScript = Join-Path $rootPath 'windows\ProxyTray.ps1'
     $arguments = '-NoLogo -NoProfile -STA -WindowStyle Hidden -File "' + $trayScript + '" -Startup'
     if (-not [string]::IsNullOrWhiteSpace($Executable)) { $arguments += ' -NodePath "' + $Executable + '"' }
-    return @{ Path = $shortcut; Target = $shell; Arguments = $arguments; Root = $rootPath; Script = $trayScript }
+    return @{ Path = $shortcut; LegacyPath = $legacyShortcut; Target = $shell; Arguments = $arguments; Root = $rootPath; Script = $trayScript }
+}
+
+function Test-ProxyStartupShortcut {
+    param($Details, [string]$ShortcutPath)
+    if (-not (Test-Path -LiteralPath $ShortcutPath -PathType Leaf)) { return $false }
+    $shell = New-Object -ComObject WScript.Shell
+    try {
+        $shortcut = $shell.CreateShortcut($ShortcutPath)
+        try {
+            $argumentPattern = '^' + [Regex]::Escape($Details.Arguments) + '(?: -NodePath "[^"\r\n]+")?$'
+            return $shortcut.TargetPath -eq $Details.Target -and $shortcut.Arguments -match $argumentPattern
+        } finally { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($shortcut) }
+    } finally { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($shell) }
 }
 
 function Test-ProxyStartup {
     param([string]$Root, [string]$HostExecutable)
     $details = Get-ProxyStartupDetails $Root '' $HostExecutable
-    if (-not (Test-Path -LiteralPath $details.Path -PathType Leaf)) { return $false }
-    $shell = New-Object -ComObject WScript.Shell
-    try {
-        $shortcut = $shell.CreateShortcut($details.Path)
-        try {
-            $argumentPattern = '^' + [Regex]::Escape($details.Arguments) + '(?: -NodePath "[^"\r\n]+")?$'
-            return $shortcut.TargetPath -eq $details.Target -and $shortcut.Arguments -match $argumentPattern
-        } finally { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($shortcut) }
-    } finally { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($shell) }
+    return (Test-ProxyStartupShortcut $details $details.Path) -or (Test-ProxyStartupShortcut $details $details.LegacyPath)
 }
 
 function Set-ProxyStartup {
     param([string]$Root, [bool]$Enabled, [string]$Executable, [string]$HostExecutable)
-    $details = Get-ProxyStartupDetails $Root $Executable $HostExecutable
-    if ((Test-Path -LiteralPath $details.Path) -and -not (Test-ProxyStartup $Root $HostExecutable)) {
-        throw 'The named Startup shortcut does not belong to this installation. It was not changed.'
+    # Check ownership without a Node argument, allowing an existing launcher to be updated.
+    $existing = Get-ProxyStartupDetails $Root '' $HostExecutable
+    foreach ($candidate in @($existing.Path, $existing.LegacyPath)) {
+        if ((Test-Path -LiteralPath $candidate) -and -not (Test-ProxyStartupShortcut $existing $candidate)) {
+            throw 'The named Startup shortcut does not belong to this installation. It was not changed.'
+        }
     }
+    $details = Get-ProxyStartupDetails $Root $Executable $HostExecutable
     if (-not $Enabled) {
         if (Test-Path -LiteralPath $details.Path -PathType Leaf) { Remove-Item -LiteralPath $details.Path -ErrorAction Stop }
+        if (Test-Path -LiteralPath $details.LegacyPath -PathType Leaf) { Remove-Item -LiteralPath $details.LegacyPath -ErrorAction Stop }
         return
     }
     $resolvedNode = Resolve-ProxyNode $Executable
@@ -110,10 +123,12 @@ function Set-ProxyStartup {
             $shortcut.Arguments = $details.Arguments
             $shortcut.WorkingDirectory = $details.Root
             $shortcut.WindowStyle = 7
-            $shortcut.Description = 'Claude Code Proxy tray (this Windows user only)'
+            $shortcut.Description = 'Proxy Party tray (this Windows user only)'
             $shortcut.Save()
         } finally { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($shortcut) }
     } finally { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($shell) }
+    # Remove the owned legacy name only after the replacement was saved successfully.
+    if (Test-Path -LiteralPath $details.LegacyPath -PathType Leaf) { Remove-Item -LiteralPath $details.LegacyPath -ErrorAction Stop }
 }
 
 if ($MyInvocation.InvocationName -ne '.') {

@@ -21,7 +21,7 @@ $script:Menu = $null
 
 function Show-ProxyError {
     param([string]$Message)
-    [void][Windows.Forms.MessageBox]::Show($Message, 'Claude Code Proxy', [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Error)
+    [void][Windows.Forms.MessageBox]::Show($Message, 'Proxy Party', [Windows.Forms.MessageBoxButtons]::OK, [Windows.Forms.MessageBoxIcon]::Error)
 }
 
 function New-ProxyProcessInfo {
@@ -191,7 +191,7 @@ function Update-ProxyTray {
         if ($owned) { "Running - $($health.Active) active" } else { 'Running elsewhere - not owned' }
     } elseif ($owned) { 'Starting or unavailable' } elseif ($health.State -eq 'foreign') { 'Port occupied by another server' } else { 'Stopped' }
     $script:StatusItem.Text = $description
-    $script:Notify.Text = "Claude Code Proxy - $description"
+    $script:Notify.Text = "Proxy Party - $description"
     if ($null -ne $script:StartupDeadline) {
         if ($health.State -eq 'matching' -and $owned) {
             $script:StartupDeadline = $null
@@ -231,6 +231,10 @@ try {
     [void]$menu.Items.Add((New-Object Windows.Forms.ToolStripSeparator))
     $script:StartupItem = New-Object Windows.Forms.ToolStripMenuItem('Start with Windows')
     $script:StartupItem.Checked = Test-ProxyStartup $script:Root
+    if ($script:StartupItem.Checked) {
+        try { Set-ProxyStartup $script:Root $true $script:Node }
+        catch { Show-ProxyError 'The existing Startup shortcut could not be updated to Proxy Party. Your startup setting was retained.' }
+    }
     $script:StartupItem.add_Click({
         try { Set-ProxyStartup $script:Root (-not $script:StartupItem.Checked) $script:Node; $script:StartupItem.Checked = Test-ProxyStartup $script:Root }
         catch { Show-ProxyError 'The per-user Startup shortcut could not be changed. No execution policy was modified.' }
@@ -246,7 +250,7 @@ try {
     $script:Notify = New-Object Windows.Forms.NotifyIcon
     $script:Notify.Icon = [Drawing.SystemIcons]::Application
     $script:Notify.ContextMenuStrip = $menu
-    $script:Notify.Text = 'Claude Code Proxy'
+    $script:Notify.Text = 'Proxy Party'
     $script:Notify.Visible = $true
     $script:Notify.add_DoubleClick({ try { Open-ProxyDashboard } catch { Show-ProxyError 'The dashboard could not be opened.' } })
     $script:Timer = New-Object Windows.Forms.Timer
