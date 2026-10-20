@@ -45,9 +45,9 @@ function createMuseHandler(dependencies) {
         throw new Error('muse_effort is not a supported reasoning effort.');
       }
       temporaryRoot = path.resolve(os.tmpdir());
-      const created = fs.mkdtempSync(path.join(temporaryRoot, 'claude-proxy-muse-'));
+      const created = fs.mkdtempSync(path.join(temporaryRoot, 'proxy-party-muse-'));
       if (path.dirname(path.resolve(created)) !== temporaryRoot ||
-          !path.basename(created).startsWith('claude-proxy-muse-')) {
+          !path.basename(created).startsWith('proxy-party-muse-')) {
         throw new Error('Muse temporary workspace is outside the expected directory.');
       }
       workspace = created;
@@ -250,7 +250,7 @@ function createMuseHandler(dependencies) {
       if (workspace) {
         try {
           if (path.dirname(path.resolve(workspace)) !== temporaryRoot ||
-              !path.basename(workspace).startsWith('claude-proxy-muse-')) {
+              !path.basename(workspace).startsWith('proxy-party-muse-')) {
             throw new Error('Invalid temporary workspace');
           }
           fs.rmSync(workspace, { recursive: true, force: true });

@@ -2,7 +2,7 @@ const { JsonLineClient } = require('./JsonLineClient');
 const { spawnProvider } = require('./process');
 const { validateConversation, parseConfiguredArgs, timeoutMilliseconds, sendError, createLifecycle } = require('./common');
 
-const CHAT_AGENT = 'claude-proxy-mimo-chat';
+const CHAT_AGENT = 'proxy-party-mimo-chat';
 const MODEL_ID = /^(?:xiaomi|mimo)\/[a-zA-Z0-9][a-zA-Z0-9._:/-]*$/;
 const ROLEPLAY_CAPABILITY = 'mimo-rp/request-v1';
 
@@ -112,7 +112,7 @@ function createMimoHandler(dependencies) {
         timeoutMs: timeoutMilliseconds(config.mimo_timeout_ms)
       });
       temporaryParent = path.resolve(config.mimo_work_dir || os.tmpdir());
-      workDir = fs.mkdtempSync(path.join(temporaryParent, 'claude-proxy-mimo-'));
+      workDir = fs.mkdtempSync(path.join(temporaryParent, 'proxy-party-mimo-'));
       const configDir = path.join(workDir, 'config');
       fs.mkdirSync(configDir);
       const args = parseConfiguredArgs(config.mimo_args, 'acp');
@@ -144,7 +144,7 @@ function createMimoHandler(dependencies) {
       });
       const initialized = await client.request('initialize', {
         protocolVersion: 1,
-        clientInfo: { name: 'claude-code-proxy', version: '1' },
+        clientInfo: { name: 'proxy-party', version: '1' },
         clientCapabilities: { fs: { readTextFile: false, writeTextFile: false }, terminal: false }
       });
       if (initialized?.protocolVersion !== 1) {

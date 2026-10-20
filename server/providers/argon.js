@@ -69,7 +69,7 @@ function createArgonHandler(dependencies = {}) {
     const timeoutMs = Number.isFinite(configuredTimeout)
       ? Math.min(2147483647, Math.max(1000, Math.floor(configuredTimeout))) : 300000;
     const messageId = `msg_argon_${randomUUID().replace(/-/g, '')}`;
-    const agentName = 'claude-proxy-argon';
+    const agentName = 'proxy-party-argon';
     let child;
     let workDir;
     let timeout;
@@ -98,7 +98,7 @@ function createArgonHandler(dependencies = {}) {
 
       // A separate workspace per request avoids sharing histories, profile files,
       // or system prompts between simultaneous SillyTavern conversations.
-      workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-proxy-argon-'));
+      workDir = fs.mkdtempSync(path.join(os.tmpdir(), 'proxy-party-argon-'));
       const agentDir = path.join(workDir, '.agents', 'agents');
       fs.mkdirSync(agentDir, { recursive: true });
       fs.writeFileSync(path.join(agentDir, `${agentName}.md`),
