@@ -245,7 +245,8 @@ function createApp(options = {}) {
       if (await dashboard(req, res, pathname)) return;
       if (pathname === '/health' && req.method === 'GET') {
         sendJson(res, 200, {
-          status: 'ok', server: 'claude-code-proxy', timestamp: now(),
+          // Keep the machine identifier compatible with existing tray launchers.
+          status: 'ok', server: 'claude-code-proxy', name: 'Proxy Party', timestamp: now(),
           dashboard: true, activity: true, activeRequests: activity.activeCount(),
           instanceId: /^[a-f0-9-]{16,64}$/i.test(options.instanceId || '') ? options.instanceId : null
         });
@@ -323,7 +324,7 @@ function startServer(options = {}) {
     filename: options.connectionsFile || path.join(__dirname, 'data', 'connections.json'), profilesDir: options.profilesDir });
   const server = createServer({ ...options, config, registry, logger });
   server.listen(port, host, () => {
-    logger.info(`claude-code-proxy listening on ${host}:${port}`);
+    logger.info(`Proxy Party listening on ${host}:${port}`);
     const localHost = ['::1', '[::1]', '::'].includes(host) ? '[::1]' : host === 'localhost' ? 'localhost' : '127.0.0.1';
     const dashboardUrl = `http://${localHost}:${port}/dashboard/`;
     logger.info(`Account dashboard: ${dashboardUrl}`);

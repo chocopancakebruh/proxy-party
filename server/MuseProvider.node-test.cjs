@@ -314,7 +314,7 @@ test('Muse reports a missing executable without leaking raw spawn diagnostics', 
 
 test('Muse never deletes a temporary workspace outside the expected root', async () => {
   const fixture = harness();
-  fixture.dependencies.fs.mkdtempSync = () => '/unrelated-directory/claude-proxy-muse-foreign';
+  fixture.dependencies.fs.mkdtempSync = () => '/unrelated-directory/proxy-party-muse-foreign';
   await fixture.run();
   assert.equal(fixture.res.status, 502);
   assert.equal(fixture.spawned.length, 0);

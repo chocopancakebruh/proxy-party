@@ -2,6 +2,7 @@ const assert = require('node:assert/strict');
 const { createHash } = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
+const os = require('node:os');
 const { spawnSync } = require('node:child_process');
 const test = require('node:test');
 
@@ -61,7 +62,8 @@ test('startup description targets hidden STA PowerShell and preserves full Node 
     Get-ProxyStartupDetails 'C:\\Synthetic Folder\\Proxy' ${quote(process.execPath)} | ConvertTo-Json -Compress
   `);
   const details = JSON.parse(output);
-  assert.match(details.Path, /Claude Code Proxy-[a-f0-9]{16}\.lnk$/);
+  assert.match(details.Path, /Proxy Party-[a-f0-9]{16}\.lnk$/);
+  assert.match(details.LegacyPath, /Claude Code Proxy-[a-f0-9]{16}\.lnk$/);
   assert.match(details.Target, /\\(?:pwsh|powershell)\.exe$/i);
   assert.ok(details.Arguments.includes('-NoLogo -NoProfile -STA -WindowStyle Hidden'));
   assert.ok(details.Arguments.includes('-File "C:\\Synthetic Folder\\Proxy\\windows\\ProxyTray.ps1" -Startup'));
@@ -78,6 +80,60 @@ test('library import does not launch Node, create a tray icon, or modify Startup
     'imported safely'
   `);
   assert.equal(output, 'imported safely');
+});
+
+test('startup rename preserves an enabled launcher and refuses foreign shortcuts', windowsOnly, () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'proxy-party-startup-test-'));
+  try {
+    const output = powershell(`
+      . ${quote(startupPath)}
+      $originalDetails = (Get-Command Get-ProxyStartupDetails).ScriptBlock
+      function Get-ProxyStartupDetails {
+        param([string]$Root, [string]$Executable, [string]$HostExecutable)
+        $details = & $originalDetails $Root $Executable $HostExecutable
+        $details.Path = Join-Path ${quote(tempRoot)} 'Proxy Party.lnk'
+        $details.LegacyPath = Join-Path ${quote(tempRoot)} 'Claude Code Proxy.lnk'
+        return $details
+      }
+      $details = Get-ProxyStartupDetails ${quote(root)} ${quote(process.execPath)}
+      $shell = New-Object -ComObject WScript.Shell
+      try {
+        $legacy = $shell.CreateShortcut($details.LegacyPath)
+        try {
+          $legacy.TargetPath = $details.Target
+          $legacy.Arguments = $details.Arguments
+          $legacy.Save()
+        } finally { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($legacy) }
+        if (-not (Test-ProxyStartup ${quote(root)})) { throw 'Legacy startup was not recognized' }
+        Set-ProxyStartup ${quote(root)} $true ${quote(process.execPath)}
+        if (-not (Test-ProxyStartup ${quote(root)}) -or (Test-Path -LiteralPath $details.LegacyPath)) { throw 'Startup migration failed' }
+        $renamed = $shell.CreateShortcut($details.Path)
+        try {
+          if ($renamed.Description -ne 'Proxy Party tray (this Windows user only)' -or $renamed.Arguments -ne $details.Arguments) { throw 'Startup launch settings changed' }
+        } finally { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($renamed) }
+        Set-ProxyStartup ${quote(root)} $false
+        if (Test-Path -LiteralPath $details.Path) { throw 'Disabling the renamed shortcut failed' }
+        $foreign = $shell.CreateShortcut($details.LegacyPath)
+        try {
+          $foreign.TargetPath = ${quote(process.execPath)}
+          $foreign.Arguments = 'foreign-launcher'
+          $foreign.Save()
+        } finally { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($foreign) }
+        foreach ($enabled in @($true, $false)) {
+          $rejected = $false
+          try { Set-ProxyStartup ${quote(root)} $enabled ${quote(process.execPath)} } catch { $rejected = $true }
+          if (-not $rejected -or -not (Test-Path -LiteralPath $details.LegacyPath) -or (Test-Path -LiteralPath $details.Path)) { throw 'Foreign shortcut was not protected' }
+        }
+      } finally { [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($shell) }
+      'migration and ownership verified'
+    `);
+    assert.equal(output, 'migration and ownership verified');
+  } finally {
+    const expectedParent = path.resolve(os.tmpdir());
+    if (path.dirname(path.resolve(tempRoot)) !== expectedParent ||
+        !path.basename(tempRoot).startsWith('proxy-party-startup-test-')) throw new Error('Unexpected test directory');
+    fs.rmSync(tempRoot, { recursive: true, force: true });
+  }
 });
 
 test('process configuration drains output and keeps Node hidden without redirecting to a file', windowsOnly, () => {

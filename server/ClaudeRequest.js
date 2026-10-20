@@ -276,7 +276,7 @@ class ClaudeRequest {
       'Content-Type': 'application/json',
       'Authorization': token,
       'anthropic-version': this.VERSION,
-      'User-Agent': 'claude-code-proxy/1.0.0'
+      'User-Agent': 'proxy-party/1.0.0'
     };
 
     const betaSet = new Set();

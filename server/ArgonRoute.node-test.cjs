@@ -123,7 +123,7 @@ function harness(t, { readThinking = async () => thinking, resultId = conversati
           }
           const events = suppliedEvents || [
             { event: 'init', conversation_id: conversationId, init: {
-              agent: 'claude-proxy-argon', model: 'gemini-4-argon-high', tools: [],
+              agent: 'proxy-party-argon', model: 'gemini-4-argon-high', tools: [],
             } },
             ...['Hello 🌟', '\nWorld'].map(text_delta => ({
               event: 'step_update', step_update: {
@@ -172,7 +172,7 @@ function harness(t, { readThinking = async () => thinking, resultId = conversati
 }
 
 const initEvent = { event: 'init', conversation_id: conversationId, init: {
-  agent: 'claude-proxy-argon', model: 'gemini-4-argon-high', tools: []
+  agent: 'proxy-party-argon', model: 'gemini-4-argon-high', tools: []
 } };
 
 test('invalid stream-json rejects the request and removes the child workspace', async t => {

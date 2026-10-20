@@ -6,9 +6,9 @@ function escapeHtml(value) {
 
 function loginPage(account, requiresKey) {
   return `<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(account.label)} authentication</title></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Proxy Party · ${escapeHtml(account.label)} authentication</title></head>
 <body style="font-family:system-ui,sans-serif;max-width:720px;margin:48px auto;padding:0 20px;line-height:1.5">
-<h1>${escapeHtml(account.label)} authentication</h1>
+<p><a href="/dashboard/">Proxy Party</a></p><h1>${escapeHtml(account.label)} authentication</h1>
 <p>Each Claude account has its own saved login.</p>
 ${requiresKey ? '<p><label>Proxy password <input id="proxy-key" type="password" autocomplete="off"></label></p>' : ''}
 <button id="start" type="button">Open Anthropic authorization</button>
@@ -50,7 +50,7 @@ document.getElementById('code-form').addEventListener('submit', async event => {
 }
 
 function resultPage(title, message) {
-  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title></head><body style="font-family:system-ui,sans-serif;max-width:720px;margin:48px auto;padding:0 20px"><h1>${escapeHtml(title)}</h1><p>${escapeHtml(message)}</p></body></html>`;
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><title>Proxy Party · ${escapeHtml(title)}</title></head><body style="font-family:system-ui,sans-serif;max-width:720px;margin:48px auto;padding:0 20px"><p><a href="/dashboard/">Proxy Party</a></p><h1>${escapeHtml(title)}</h1><p>${escapeHtml(message)}</p></body></html>`;
 }
 
 module.exports = { loginPage, resultPage };

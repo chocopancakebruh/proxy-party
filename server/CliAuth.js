@@ -132,7 +132,7 @@ function createCliAuth(dependencies = {}) {
     if (id === 'mimo' && !loginExecutable) throw requestError('Official MiMo CLI not found for sign-in. Install MiMo Code or set mimo_auth_command to its executable; mimo_command remains the chat client.', 400);
     if (!result.canLogin) throw requestError(result.message || provider.guidance, 400);
     const shell = powershellPath();
-    const title = `${dependencies.connectionLabel || provider.label} sign-in - Claude Code Proxy`;
+    const title = `${dependencies.connectionLabel || provider.label} sign-in - Proxy Party`;
     const loginScript = [
       '$ErrorActionPreference = \'Stop\'',
       `$Host.UI.RawUI.WindowTitle = ${literal(title)}`,
