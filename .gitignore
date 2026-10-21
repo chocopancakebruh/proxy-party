@@ -59,3 +59,6 @@ before-*/
 *.patch
 *.zip
 temp_capture_for_*
+
+# App-specific local CLI installations
+.local/

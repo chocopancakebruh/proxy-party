@@ -117,6 +117,7 @@ Use the dashboard's **Sign in** button for each newly added independent CLI conn
 | The dashboard does not open | Keep the server running and open `http://127.0.0.1:42069/dashboard/` manually. If you changed `port`, use that port in the URL. Check the terminal for startup errors. |
 | `EADDRINUSE` / port already in use | Stop the other copy of the proxy, including a running tray instance, or choose a different `port` in `server/config.txt` and restart. |
 | Provider CLI is missing | Install that provider's CLI, check its command is on PATH, then restart Proxy Party. Custom executable paths can be set in the config. |
+| Argon returns `write EOF`, a closed input pipe, or a Windows crash status | Run `agy --version` (or your configured Argon executable with `--version`). If it crashes before printing a version, repair the CLI or use a known-working release. Set `argon_command` in your local config to that native executable's full path, then restart the proxy. Windows status `0xC0000005` means the CLI crashed with an access violation. |
 | A new connection is not authenticated | Use **Sign in** on that specific card. A login saved for another card or your ordinary CLI profile does not authenticate a new independent connection. |
 | The tray script is blocked by policy | Use `run.bat` or `npm.cmd start` for console mode. See the tray section for supported hosts and script-policy requirements. |
 
