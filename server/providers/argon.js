@@ -74,6 +74,7 @@ function createArgonHandler(dependencies = {}) {
     let workDir;
     let timeout;
     let startupTimeout;
+    let inputFailureTimeout;
     let heartbeat;
     let anthropicStream;
     let clientGone = false;
@@ -111,6 +112,7 @@ function createArgonHandler(dependencies = {}) {
       const result = await new Promise((resolve, reject) => {
         let settled = false;
         let initialized = false;
+        let inputFailure;
         let stdoutBuffer = '';
         const maxLineLength = 16 * 1024 * 1024;
         const finish = (error, value) => {
@@ -118,6 +120,7 @@ function createArgonHandler(dependencies = {}) {
           settled = true;
           clearTimeout(timeout);
           clearTimeout(startupTimeout);
+          clearTimeout(inputFailureTimeout);
           clearInterval(heartbeat);
           if (error) {
             reject(error);
@@ -126,6 +129,31 @@ function createArgonHandler(dependencies = {}) {
           }
         };
         failRequest = error => finish(error);
+        const exitError = (code, signal) => {
+          const windowsStatus = process.platform === 'win32' && Number.isInteger(code) && (code >>> 0) >= 0x80000000
+            ? `0x${(code >>> 0).toString(16).toUpperCase().padStart(8, '0')}` : null;
+          const stage = initialized ? 'before a successful result' : 'before initialization';
+          const detail = windowsStatus
+            ? `Windows status ${windowsStatus}${windowsStatus === '0xC0000005' ? ': access violation' : ''}`
+            : `code=${code}, signal=${signal || 'none'}`;
+          return new Error(`Antigravity CLI ${windowsStatus ? 'crashed' : 'exited'} ${stage} (${detail}).` +
+            (!initialized ? ' Run the configured Argon executable with --version. If it also fails, repair the CLI installation or set argon_command to a known-working native executable, then restart the proxy.' : ''));
+        };
+        const onInputError = error => {
+          if (settled || inputFailure) return;
+          if (!['EOF', 'EPIPE', 'ERR_STREAM_DESTROYED', 'ERR_STREAM_WRITE_AFTER_END'].includes(error.code)) {
+            finish(error);
+            return;
+          }
+          // Windows can report a broken stdin pipe before close and stderr arrive.
+          // Keep the exit status rather than hiding a startup crash behind "write EOF".
+          inputFailure = error;
+          inputFailureTimeout = setTimeout(() => {
+            if (child.exitCode != null || child.signalCode != null) finish(exitError(child.exitCode, child.signalCode));
+            else finish(new Error(`Antigravity CLI closed its input pipe ${initialized ? 'before completing the response' : 'before initialization'} (${error.code}). Run the configured Argon executable with --version and check its installation.`));
+          }, 500);
+          inputFailureTimeout.unref?.();
+        };
         const writeText = text => {
           if (!text) return;
           if (typeof text !== 'string') throw new Error('Invalid text_delta from Antigravity CLI.');
@@ -243,7 +271,7 @@ function createArgonHandler(dependencies = {}) {
         child.stderr.setEncoding('utf8');
         child.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(-16000); });
         child.stderr.on('error', error => finish(error));
-        child.stdin.on('error', error => finish(error));
+        child.stdin.on('error', onInputError);
         child.stdout.on('error', error => finish(error));
         child.on('error', error => finish(error));
         child.stdout.on('data', chunk => {
@@ -265,12 +293,16 @@ function createArgonHandler(dependencies = {}) {
         });
         // close follows stdout draining; exit can race the final result line.
         child.on('close', (code, signal) => {
-          finish(new Error(`Antigravity exited before a successful result (code=${code}, signal=${signal || 'none'}).`));
+          finish(exitError(code, signal));
         });
         // Do not assume init arrives before the first input event. Follow the
         // documented stdin protocol, keep it open until result/cleanup, and keep
         // the entire history out of argv.
-        child.stdin.write(`${JSON.stringify({ event: 'user', message: { content: prompt } })}\n`);
+        try {
+          child.stdin.write(`${JSON.stringify({ event: 'user', message: { content: prompt } })}\n`, error => {
+            if (error) onInputError(error);
+          });
+        } catch (error) { onInputError(error); }
       });
 
       if (clientGone || res.destroyed) return;
@@ -316,6 +348,7 @@ function createArgonHandler(dependencies = {}) {
     } finally {
       clearTimeout(timeout);
       clearTimeout(startupTimeout);
+      clearTimeout(inputFailureTimeout);
       clearInterval(heartbeat);
       req.off('aborted', onDisconnect);
       res.off('close', onDisconnect);
