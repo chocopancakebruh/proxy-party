@@ -175,6 +175,63 @@ const initEvent = { event: 'init', conversation_id: conversationId, init: {
   agent: 'proxy-party-argon', model: 'gemini-4-argon-high', tools: []
 } };
 
+for (const code of [0xC0000005, -1073741819]) {
+  test(`stdin EOF retains the Windows crash status (${code}) and late stderr`, async t => {
+    const current = harness(t, { events: [], onInput: ({ child }) => {
+      child.stdin.emit('error', Object.assign(new Error('write EOF'), { code: 'EOF' }));
+      queueMicrotask(() => {
+        child.stderr.write('Synthetic startup diagnostic.');
+        current.spawned[0].exit(null, code);
+      });
+    } });
+    await current.run(true);
+    assert.equal(current.res.status, 502);
+    const message = JSON.parse(current.res.chunks.join('')).error.message;
+    assert.match(message, /crashed before initialization.*0xC0000005: access violation/);
+    assert.match(message, /--version/);
+    assert.match(message, /Synthetic startup diagnostic/);
+    assert.doesNotMatch(message, /write EOF/);
+    assert.equal(current.res.endCalls, 1);
+    assert.deepEqual(current.reads, []);
+    assert.deepEqual(current.treeTerminations, [], 'an already-exited CLI is not killed again');
+    assert.equal(fs.existsSync(current.spawned[0].options.cwd), false);
+  });
+}
+
+test('stdin EPIPE retains an ordinary CLI exit code instead of reporting a Windows crash', async t => {
+  const current = harness(t, { events: [], onInput: ({ child }) => {
+    child.stdin.emit('error', Object.assign(new Error('write EPIPE'), { code: 'EPIPE' }));
+    queueMicrotask(() => {
+      child.stderr.write('Synthetic unsupported CLI option.');
+      current.spawned[0].exit(null, 2);
+    });
+  } });
+  await current.run(false);
+  const message = JSON.parse(current.res.chunks.join('')).error.message;
+  assert.equal(current.res.status, 502);
+  assert.match(message, /exited before initialization \(code=2, signal=none\)/);
+  assert.match(message, /Synthetic unsupported CLI option/);
+  assert.doesNotMatch(message, /crashed|write EPIPE/);
+  assert.equal(fs.existsSync(current.spawned[0].options.cwd), false);
+});
+
+test('a broken input pipe without a close event fails promptly and cleans up the live CLI', async t => {
+  const current = harness(t, { events: [], onInput: ({ child }) => {
+    child.stdin.emit('error', Object.assign(new Error('write EOF'), { code: 'EOF' }));
+    child.stdin.emit('error', Object.assign(new Error('duplicate EOF'), { code: 'EOF' }));
+  } });
+  // Keep this mocked child alive past the pipe diagnostic deadline. Real children
+  // hold OS pipe handles; the PassThrough-based fixture does not.
+  const keepAlive = setTimeout(() => {}, 2000);
+  try {
+    await current.run(true);
+    assert.equal(current.res.status, 502);
+    assert.equal(current.res.endCalls, 1);
+    assert.equal(current.errors.length, 1);
+    current.assertStopped();
+  } finally { clearTimeout(keepAlive); }
+});
+
 test('invalid stream-json rejects the request and removes the child workspace', async t => {
   const current = harness(t, { rawOutput: 'not-json\n' });
   await current.run(false);
