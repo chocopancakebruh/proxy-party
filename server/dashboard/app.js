@@ -119,18 +119,18 @@
     const message = node('p', 'provider-message', 'Waiting for your local proxy…');
     const expiry = node('p', 'provider-expiry');
     let modelSettings, modelSelect, modelFeedback;
-    if (definition.provider === 'mimo') {
+    if (['mimo', 'kimi'].includes(definition.provider)) {
       modelSettings = node('div', 'model-settings');
       const modelLabel = node('label', 'model-label', 'MODEL');
       modelLabel.htmlFor = `${definition.id}-model`;
       modelSelect = node('select', 'model-select');
       modelSelect.id = modelLabel.htmlFor;
-      modelSelect.setAttribute('aria-label', 'MiMo model');
+      modelSelect.setAttribute('aria-label', `${definition.label} model`);
       modelSelect.setAttribute('aria-describedby', `${definition.id}-model-feedback`);
       modelFeedback = node('p', 'model-feedback', 'Saves automatically. Applies to new requests.');
       modelFeedback.id = `${definition.id}-model-feedback`;
       modelFeedback.setAttribute('role', 'status');
-      modelSelect.addEventListener('change', () => saveMimoModel(definition.id, modelSelect.value));
+      modelSelect.addEventListener('change', () => saveModel(definition.id, modelSelect.value));
       modelSettings.append(modelLabel, modelSelect, modelFeedback);
     }
     const endpointLabel = node('label', 'endpoint-label', 'SILLYTAVERN ENDPOINT');
@@ -246,7 +246,7 @@
     updateActivityControls();
   }
 
-  async function saveMimoModel(id, model) {
+  async function saveModel(id, model) {
     if (loading || activeAction) return;
     const provider = providers.get(id);
     const card = cards.get(id);
