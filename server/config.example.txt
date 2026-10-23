@@ -16,6 +16,8 @@ proxy_api_key=
 
 # Optional CLI locations; commands are resolved from PATH by default.
 # kimi_command=kimi
+# Kimi dashboard choices save here for the original connection.
+# kimi_model=kimi-code/k3-256k
 # codex_command=codex
 # grok_command=grok
 # argon_command=agy

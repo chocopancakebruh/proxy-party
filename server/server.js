@@ -10,12 +10,12 @@ const { loginPage, resultPage } = require('./AuthPages');
 const { createDashboard, requireSameOrigin } = require('./Dashboard');
 const { createRequestActivity, markActivityFailure } = require('./RequestActivity');
 const { createMimoModels } = require('./MimoModels');
+const { createKimiModels, DEFAULT_MODEL: DEFAULT_KIMI_MODEL } = require('./KimiModels');
 const path = require('node:path');
 const { createConnectionRegistry, providerDefinition } = require('./ConnectionRegistry');
 const { createConnectionProfiles } = require('./ConnectionProfiles');
 
 const KIMI_ROUTE_MODELS = Object.freeze({
-  '/v1/kimi/messages': 'kimi-code/k3-256k',
   '/v1/kimi-256k/messages': 'kimi-code/k3-256k',
   '/v1/kimi-1m/messages': 'kimi-code/k3'
 });
@@ -152,6 +152,7 @@ function createApp(options = {}) {
       delete accounts[id];
     },
     mimoModels: createMimoModels({ config, configFile: options.configFile }),
+    kimiModels: createKimiModels({ config, configFile: options.configFile }),
     getAuthGeneration: account => accountGenerations.get(account.id) || 0,
     async refresh(account) {
       await account.manager.refreshAccessToken();
@@ -271,7 +272,10 @@ function createApp(options = {}) {
       requestActivity.setStreaming(body.stream === true);
       const providerMethod = providerDefinition(connection.provider).handler;
       if (providerMethod) {
-        const model = kimiModel || (connectionMatch?.[2] === 'kimi-1m' ? 'kimi-code/k3' : connection.provider === 'kimi' ? 'kimi-code/k3-256k' : undefined);
+        const model = connection.provider === 'kimi' ? kimiModel
+          || (connectionMatch?.[2] === 'kimi-1m' ? 'kimi-code/k3'
+            : connectionMatch?.[2] === 'kimi-256k' ? DEFAULT_KIMI_MODEL
+            : profiles.get(connection).config.kimi_model || DEFAULT_KIMI_MODEL) : undefined;
         await profiles.handlers(connection)[providerMethod](req, res, body, model);
         return;
       }

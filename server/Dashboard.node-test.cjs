@@ -132,7 +132,7 @@ test('MiMo model selection persists and appears in status without restarting the
   const { api, configFile } = await setup(context, { mimo_model: 'xiaomi/mimo-v2.6-pro' });
   const before = await (await api('status')).json();
   assert.equal(before.providers.find(provider => provider.id === 'mimo').modelSelection.selected, 'xiaomi/mimo-v2.6-pro');
-  assert.ok(before.providers.filter(provider => provider.id !== 'mimo').every(provider => !provider.modelSelection));
+  assert.ok(before.providers.filter(provider => !['mimo', 'kimi'].includes(provider.id)).every(provider => !provider.modelSelection));
   for (const model of ['xiaomi/mimo-v2.6-flash', 'xiaomi/mimo-v2.6-pro']) {
     const response = await api('providers/mimo/model', { method: 'POST', body: JSON.stringify({ model }) });
     assert.equal(response.status, 200);
@@ -143,11 +143,11 @@ test('MiMo model selection persists and appears in status without restarting the
   }
 });
 
-test('MiMo model writes require same-origin, dashboard header, proxy key, POST and valid bounded JSON', async context => {
+for (const provider of ['mimo', 'kimi']) test(`${provider} model writes require same-origin, dashboard header, proxy key, POST and valid bounded JSON`, async context => {
   const { api, base, configFile } = await setup(context, { proxy_api_key: 'synthetic-proxy-key' });
   const original = fs.readFileSync(configFile, 'utf8');
-  const route = 'providers/mimo/model';
-  const body = JSON.stringify({ model: 'xiaomi/mimo-v2.6-flash' });
+  const route = `providers/${provider}/model`;
+  const body = JSON.stringify({ model: provider === 'kimi' ? 'kimi-code/k3.1-pro' : 'xiaomi/mimo-v2.6-flash' });
   const headers = { 'X-Proxy-Key': 'synthetic-proxy-key' };
   assert.equal((await api(route, { method: 'POST', body })).status, 401);
   assert.equal((await fetch(`${base}/dashboard/api/${route}`, { method: 'POST', headers, body })).status, 403);

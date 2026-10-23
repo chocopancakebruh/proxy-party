@@ -203,6 +203,38 @@ test('MiMo model changes persist per connection and never alter another account 
   assert.equal((await h.api(`providers/${a.id}/model`, { model: 'ultraspeed' })).status, 400);
 });
 
+test('Kimi dropdown saves per account, routes new requests immediately and preserves fixed K3 URLs', async t => {
+  const h = await serverFixture(t);
+  const a = await h.add('kimi'), b = await h.add('kimi');
+  const aPath = new URL(a.proxyUrl).pathname, bPath = new URL(b.proxyUrl).pathname;
+  // Warm both runtimes before changing models so stale handler config is caught.
+  for (const route of [aPath, bPath, '/v1/kimi']) {
+    assert.equal((await h.chat(route)).status, 200);
+    assert.equal(h.requests.at(-1).model, 'kimi-code/k3-256k');
+  }
+  assert.equal((await h.api(`providers/${a.id}/model`, { model: 'kimi-code/k3.1-pro' })).status, 200);
+  assert.equal((await h.api('providers/kimi/model', { model: 'kimi-code/k3.1-pro-highspeed' })).status, 200);
+  const status = await (await h.api('status')).json();
+  assert.equal(status.providers.find(p => p.id === a.id).modelSelection.selected, 'kimi-code/k3.1-pro');
+  assert.equal(status.providers.find(p => p.id === b.id).modelSelection.selected, 'kimi-code/k3-256k');
+  assert.equal(status.providers.find(p => p.id === 'kimi').modelSelection.selected, 'kimi-code/k3.1-pro-highspeed');
+  assert.equal(createConnectionRegistry({ filename: h.filename }).get(a.id).settings.model, 'kimi-code/k3.1-pro');
+  assert.equal(require('./Config').loadConfig(path.join(h.root, 'config.txt'), {}).kimi_model, 'kimi-code/k3.1-pro-highspeed');
+  for (const [route, model] of [
+    [aPath, 'kimi-code/k3.1-pro'], [bPath, 'kimi-code/k3-256k'],
+    ['/v1/kimi', 'kimi-code/k3.1-pro-highspeed'],
+    [aPath + '/kimi-256k', 'kimi-code/k3-256k'], [aPath + '/kimi-1m', 'kimi-code/k3'],
+    ['/v1/kimi-256k', 'kimi-code/k3-256k'], ['/v1/kimi-1m', 'kimi-code/k3']
+  ]) {
+    assert.equal((await h.chat(route)).status, 200, route);
+    assert.equal(h.requests.at(-1).model, model, route);
+  }
+  for (const model of ['k3.1', 'kimi-code/k3.1', 'xiaomi/mimo-v2.6-pro']) {
+    assert.equal((await h.api(`providers/${a.id}/model`, { model })).status, 400);
+  }
+  assert.equal(h.registry.get(a.id).settings.model, 'kimi-code/k3.1-pro');
+});
+
 test('connection mutations require local same-origin requests, the dashboard header and proxy key', async t => {
   const h = await serverFixture(t, { proxy_api_key: 'synthetic-key' });
   assert.equal((await h.api('connections', { provider: 'claude' })).status, 401);

@@ -138,6 +138,32 @@ for (const provider of ['Kimi', 'Grok', 'Codex']) {
   }
 }
 
+test('Kimi snapshots the selected model before initialization and honors explicit route overrides', async () => {
+  for (const override of [undefined, 'kimi-code/k3']) {
+    const config = { kimi_model: 'kimi-code/k3.1-pro' };
+    const fixture = harness({ config, onRequest({ request }) {
+      if (request.method === 'initialize') config.kimi_model = 'kimi-code/k3.1-pro-highspeed';
+    } });
+    await fixture.handlers.handleKimiRequest(fixture.req, fixture.res, { messages: [{ role: 'user', content: 'Hi' }] }, override);
+    assert.equal(fixture.res.status, 200);
+    const expected = override || 'kimi-code/k3.1-pro';
+    assert.equal(fixture.calls.find(r => r.method === 'session/set_config_option').params.value, expected);
+    assert.equal(fixture.res.json().model, expected);
+  }
+});
+
+test('Kimi never prompts or falls back when the CLI rejects a selected model', async () => {
+  const fixture = harness({ config: { kimi_model: 'kimi-code/k3.1-pro' }, onRequest({ request, send }) {
+    if (request.method !== 'session/set_config_option') return;
+    send({ id: request.id, error: { code: -32602, message: 'Model unavailable' } });
+    return true;
+  } });
+  await fixture.handlers.handleKimiRequest(fixture.req, fixture.res, { messages: [{ role: 'user', content: 'Hi' }] });
+  assert.equal(fixture.res.status, 502);
+  assert.equal(fixture.calls.filter(r => r.method === 'session/set_config_option').length, 1);
+  assert.equal(fixture.calls.some(r => r.method === 'session/prompt'), false);
+});
+
 test('Codex disables configured tools and preserves native usage', async () => {
   const fixture = harness();
   await fixture.handlers.handleCodexRequest(fixture.req, fixture.res, { messages: [{ role: 'user', content: 'Hi' }] });
