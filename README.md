@@ -147,6 +147,32 @@ Every Kimi card has a **Model** dropdown, including **Kimi K3.1 Pro**, **K3.1 Pr
 
 Use the base endpoint copied from the card to follow its dropdown. The explicit `/kimi-256k` and `/kimi-1m` routes always select K3 256K and K3 1M, respectively, regardless of the saved choice. K3.1 requires thinking mode and a compatible Kimi CLI or chat adapter; keep it updated and refresh its sign-in if the new models are missing. Model access depends on your subscription; K3.1 Pro Highspeed uses about twice the quota of regular Pro. See the [official Kimi model reference](https://www.kimi.com/code/docs/en/kimi-code/models).
 
+The dropdown lists supported models; your installed CLI must also know those model IDs. Before sending a prompt, the proxy checks the CLI's advertised model catalog and reports a setup error if the selected model is missing. It never substitutes another model. Older Kimi RP builds can otherwise report only `Internal error` when selecting a newly released model.
+
+For a missing Kimi model, update the official CLI and refresh its sign-in/model catalog for that account. Updating the official CLI does not update a separate custom RP build. If you keep a custom build and its catalog remains stale, add the missing entries to that account's **Kimi CLI `config.toml`**, not Proxy Party's `server/config.txt`. The original Kimi connection normally uses `~/.kimi-code/config.toml`; additional connections use `server/data/profiles/<connection-id>/.kimi-code/config.toml` (or the directory selected by your CLI environment). Back up the file and add only absent sections. These entries reuse an already configured `managed:kimi-code` provider and do not contain credentials:
+
+```toml
+[models."kimi-code/k3.1-pro"]
+provider = "managed:kimi-code"
+model = "k3.1-pro"
+max_context_size = 1048576
+capabilities = ["thinking", "always_thinking", "image_in", "video_in", "tool_use"]
+display_name = "K3.1 Pro"
+support_efforts = ["low", "high", "max"]
+default_effort = "max"
+
+[models."kimi-code/k3.1-pro-highspeed"]
+provider = "managed:kimi-code"
+model = "k3.1-pro-highspeed"
+max_context_size = 1048576
+capabilities = ["thinking", "always_thinking", "image_in", "video_in", "tool_use"]
+display_name = "K3.1 Pro Highspeed"
+support_efforts = ["low", "high", "max"]
+default_effort = "max"
+```
+
+The CLI reads these entries on the next proxy request. Actual model and context access still depend on your plan. Keep your custom adapter's conversation profile and tool restrictions in place.
+
 MiMo's card includes a **Model** selector for **MiMo v2.6 Pro** and **MiMo v2.6 Flash**. Choosing a model saves it in that connection's registry settings (or `mimo_model` in `server/config.txt` for the original MiMo card) and applies it to new requests immediately, without restarting. In-flight requests keep their original model. The choice survives a restart; a failed file save leaves the active model unchanged. Custom models configured manually remain active until you choose one of the listed models. Pro Ultraspeed is excluded from this selector because [current Token Plans do not include it](https://mimo.mi.com/docs/en-US/quick-start/faq/token-plan/desktop-guide).
 
 - Start the proxy with `run-tray.bat`, `run.bat`, `run.sh`, or `npm start`, then use the browser dashboard. Closing the browser does not stop the proxy. In tray mode, use the tray menu to stop it; in console mode, close the proxy terminal. Set `auto_open_browser=false` to suppress the console launcher's browser opening.
