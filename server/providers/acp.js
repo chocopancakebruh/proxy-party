@@ -3,6 +3,23 @@ const { DEFAULT_MODEL: DEFAULT_KIMI_MODEL } = require('../KimiModels');
 const { spawnProvider } = require('./process');
 const { validateConversation, parseConfiguredArgs, timeoutMilliseconds, sendError, createLifecycle } = require('./common');
 
+const KIMI_MODEL_HELP = 'Update or refresh the Kimi CLI model catalog, or add the model to this account\'s CLI config.toml. Custom Kimi adapters may need updated model entries.';
+
+function checkKimiModel(session, model) {
+  const picker = Array.isArray(session.configOptions) ? session.configOptions.find(option => option?.id === 'model') : undefined;
+  let available;
+  if (Array.isArray(picker?.options)) {
+    // ACP supports flat choices and one level of named option groups.
+    available = picker.options.flatMap(option => Array.isArray(option.options) ? option.options : [option])
+      .map(option => option.value);
+  } else if (Array.isArray(session.models?.availableModels)) {
+    available = session.models.availableModels.map(option => option.modelId);
+  }
+  if (available && !available.includes(model)) {
+    throw new Error(`The selected Kimi model is not available in this CLI's model catalog. ${KIMI_MODEL_HELP}`);
+  }
+}
+
 function buildPrompt(provider, conversation) {
   if (provider === 'Kimi') {
     return [
@@ -82,7 +99,17 @@ function createAcpHandler(provider, dependencies) {
       }
       sessionId = session.sessionId;
       if (provider === 'Kimi') {
-        await client.request('session/set_config_option', { sessionId, configId: 'model', value: model });
+        checkKimiModel(session, model);
+        try {
+          await client.request('session/set_config_option', { sessionId, configId: 'model', value: model });
+        } catch (error) {
+          // Older Kimi versions hide missing-model details behind -32603.
+          // Explain this operation without exposing raw CLI paths or config.
+          if (error.code === -32603 && /^internal error$/i.test(error.message)) {
+            throw new Error(`Kimi CLI could not select the requested model. ${KIMI_MODEL_HELP}`);
+          }
+          throw error;
+        }
       }
       lifecycle.check();
       lifecycle.startStream();
