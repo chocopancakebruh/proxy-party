@@ -1,4 +1,5 @@
 const { JsonLineClient } = require('./JsonLineClient');
+const { DEFAULT_MODEL: DEFAULT_KIMI_MODEL } = require('../KimiModels');
 const { spawnProvider } = require('./process');
 const { validateConversation, parseConfiguredArgs, timeoutMilliseconds, sendError, createLifecycle } = require('./common');
 
@@ -37,7 +38,7 @@ function createAcpHandler(provider, dependencies) {
     try {
       const conversation = validateConversation(body);
       if (req.aborted || res.destroyed) return;
-      const model = provider === 'Kimi' ? requestedModel || 'kimi-code/k3-256k' : config.grok_model || 'grok-build';
+      const model = provider === 'Kimi' ? requestedModel || config.kimi_model || DEFAULT_KIMI_MODEL : config.grok_model || 'grok-build';
       const command = config[`${key}_command`] || key;
       const args = parseConfiguredArgs(config[`${key}_args`], provider === 'Kimi' ? 'acp' : 'agent');
       if (provider === 'Grok') args.push('--model', model, 'stdio');
