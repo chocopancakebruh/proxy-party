@@ -164,6 +164,45 @@ test('Kimi never prompts or falls back when the CLI rejects a selected model', a
   assert.equal(fixture.calls.some(r => r.method === 'session/prompt'), false);
 });
 
+for (const format of ['flat', 'grouped', 'legacy']) {
+  for (const available of [false, true]) {
+    test(`Kimi checks ${format} model catalogs before generation (available=${available})`, async () => {
+      const chosen = 'kimi-code/k3.1-pro';
+      const advertised = available ? chosen : 'kimi-code/k3';
+      const options = [{ value: advertised, name: 'Test model' }];
+      const catalog = format === 'legacy' ? { models: { availableModels: [{ modelId: advertised }] } }
+        : { configOptions: [{ id: 'model', options: format === 'grouped' ? [{ group: 'Kimi', options }] : options }] };
+      const fixture = harness({ config: { kimi_model: chosen }, onRequest({ request, send }) {
+        if (request.method !== 'session/new') return;
+        send({ id: request.id, result: { sessionId: 'session', ...catalog } });
+        return true;
+      } });
+      await fixture.handlers.handleKimiRequest(fixture.req, fixture.res, { messages: [{ role: 'user', content: 'Hi' }] });
+      assert.equal(fixture.res.status, available ? 200 : 502);
+      assert.equal(fixture.calls.some(r => r.method === 'session/prompt'), available);
+      assert.equal(fixture.calls.some(r => r.method === 'session/set_config_option'), available);
+      if (!available) {
+        assert.match(fixture.res.json().error.message, /model catalog.*config.toml/);
+        assert.doesNotMatch(fixture.res.json().error.message, /Internal error/);
+      }
+      assert.equal(fixture.spawned[0].child.exitCode, 0);
+    });
+  }
+}
+
+test('older Kimi generic model-selection errors explain recovery without exposing CLI details', async () => {
+  const fixture = harness({ config: { kimi_model: 'kimi-code/k3.1-pro' }, onRequest({ request, send }) {
+    if (request.method !== 'session/set_config_option') return;
+    send({ id: request.id, error: { code: -32603, message: 'Internal error', data: { details: 'private-config-path synthetic-secret' } } });
+    return true;
+  } });
+  await fixture.handlers.handleKimiRequest(fixture.req, fixture.res, { messages: [{ role: 'user', content: 'Hi' }], stream: true });
+  assert.equal(fixture.res.status, 502);
+  assert.match(fixture.res.json().error.message, /could not select.*model catalog/);
+  assert.doesNotMatch(fixture.res.json().error.message, /private-config-path|synthetic-secret|Internal error/);
+  assert.equal(fixture.calls.some(r => r.method === 'session/prompt'), false);
+});
+
 test('Codex disables configured tools and preserves native usage', async () => {
   const fixture = harness();
   await fixture.handlers.handleCodexRequest(fixture.req, fixture.res, { messages: [{ role: 'user', content: 'Hi' }] });
