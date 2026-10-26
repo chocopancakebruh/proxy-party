@@ -2,7 +2,8 @@ const { JsonLineClient } = require('./JsonLineClient');
 const { spawnProvider } = require('./process');
 const { validateConversation, parseConfiguredArgs, timeoutMilliseconds, sendError, createLifecycle } = require('./common');
 
-const CHAT_AGENT = 'proxy-party-mimo-chat';
+// Protocol identifier shared with MiMo RP; keep stable across app renames.
+const CHAT_AGENT = 'claude-proxy-mimo-chat';
 const MODEL_ID = /^(?:xiaomi|mimo)\/[a-zA-Z0-9][a-zA-Z0-9._:/-]*$/;
 const ROLEPLAY_CAPABILITY = 'mimo-rp/request-v1';
 
