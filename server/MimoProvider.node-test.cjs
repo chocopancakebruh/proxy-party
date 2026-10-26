@@ -153,6 +153,34 @@ test('MiMo explicitly selects verified ACP mode and model before prompting', asy
   assert.deepEqual(fixture.spawned[0].args, ['acp', '--hostname', '127.0.0.1', '--port', '0', '--mdns', 'false']);
 });
 
+test('MiMo RP retains its fixed conversation mode across application renames', async () => {
+  // Independent of CHAT_AGENT: the separate executable advertises this literal ID.
+  const rpMode = 'claude-proxy-mimo-chat';
+  const session = { ...defaultSession(), modes: { currentModeId: rpMode,
+    availableModes: [{ id: rpMode, name: 'SillyTavern conversation' }] } };
+  const fixture = harness({ session, onRequest({ request, send }) {
+    if (request.method === 'initialize') {
+      send({ id: request.id, result: { protocolVersion: 1, _meta: { 'mimo-rp/request-v1': true } } });
+      return true;
+    }
+    if (request.method === 'session/set_mode') {
+      assert.equal(request.params.modeId, rpMode);
+      send({ method: 'session/update', params: { sessionId: 'session', update: {
+        sessionUpdate: 'current_mode_update', currentModeId: rpMode
+      } } });
+    }
+  } });
+  await fixture.handler(fixture.req, fixture.res, { ...BODY, stream: true });
+  assert.equal(fixture.res.status, 200);
+  const events = fixture.res.events();
+  assert.equal(events.some(event => event.type === 'message_stop'), true);
+  assert.equal(events.some(event => event.type === 'error'), false);
+  const prompt = fixture.calls.find(call => call.method === 'session/prompt').params;
+  assert.deepEqual(prompt.prompt, []);
+  assert.deepEqual(prompt._meta['mimo-rp/request-v1'].request.messages, BODY.messages);
+  assert.equal(JSON.parse(fixture.spawned[0].options.env.MIMOCODE_CONFIG_CONTENT).default_agent, rpMode);
+});
+
 test('MiMo captures the selected model per request and hot switches subsequent requests on the same handler', async () => {
   const pro = 'xiaomi/mimo-v2.6-pro';
   const flash = 'xiaomi/mimo-v2.6-flash';
