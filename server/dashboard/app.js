@@ -119,7 +119,7 @@
     const message = node('p', 'provider-message', 'Waiting for your local proxy…');
     const expiry = node('p', 'provider-expiry');
     let modelSettings, modelSelect, modelFeedback;
-    if (['mimo', 'kimi'].includes(definition.provider)) {
+    if (definition.modelSelection) {
       modelSettings = node('div', 'model-settings');
       const modelLabel = node('label', 'model-label', 'MODEL');
       modelLabel.htmlFor = `${definition.id}-model`;
@@ -168,7 +168,7 @@
     const remove = button('button button-quiet card-remove', 'Remove', () => confirmAction(definition.id, 'remove', remove));
     remove.setAttribute('aria-label', `Remove ${definition.label}`);
     actions.append(login, refresh, reset, logout, remove);
-    const hint = node('p', 'card-hint', definition.independentAccounts === false ? 'Argon shares this computer’s CLI sign-in.' : definition.legacy && definition.kind === 'cli'
+    const hint = node('p', 'card-hint', definition.independentAccounts === false ? 'Antigravity shares this computer’s CLI sign-in.' : definition.legacy && definition.kind === 'cli'
       ? 'Uses your existing CLI account. Add another for a separate sign-in.' : 'Sign-in and settings belong to this connection.');
     card.append(top, category, title, detail, message, expiry);
     if (modelSettings) card.append(modelSettings);
