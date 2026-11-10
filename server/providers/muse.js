@@ -36,7 +36,8 @@ function createMuseHandler(dependencies) {
     try {
       const conversation = validateConversation(body);
       if (req.aborted || res.destroyed) return;
-      const model = config.muse_model || 'muse';
+      const configuredModel = config.muse_model;
+      const model = configuredModel || 'muse';
       const reasoningMode = config.muse_reasoning_mode || 'summary';
       if (!['summary', 'raw', 'both', 'none'].includes(reasoningMode)) {
         throw new Error('muse_reasoning_mode must be summary, raw, both, or none.');
@@ -194,14 +195,14 @@ function createMuseHandler(dependencies) {
       const started = await client.request('session/start', {
         sessionId, commandId: commandId(randomUUID), workspaceRoot: workspace,
         providerId: 'meta', approvalMode: 'denyUnmatched',
-        ...(config.muse_model ? { modelId: config.muse_model } : {})
+        ...(configuredModel ? { modelId: configuredModel } : {})
       });
       if (started?.session?.sessionId !== sessionId || started.session.path !== '' ||
           started.session.approvalMode?.mode !== 'denyUnmatched') {
         throw new Error('Muse did not establish the requested fresh, restricted session.');
       }
       if (started.session.providerId !== 'meta' || typeof started.session.modelId !== 'string' ||
-          !started.session.modelId || (config.muse_model && started.session.modelId !== config.muse_model)) {
+          !started.session.modelId || (configuredModel && started.session.modelId !== configuredModel)) {
         throw new Error('Muse did not select the requested Meta provider and model.');
       }
       lifecycle.setModel(started.session.modelId);
@@ -261,4 +262,4 @@ function createMuseHandler(dependencies) {
   };
 }
 
-module.exports = { createMuseHandler, MUSE_ARGS, commandId };
+module.exports = { createMuseHandler, MUSE_ARGS, commandId, validateInitialization };

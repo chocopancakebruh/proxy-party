@@ -47,6 +47,7 @@ function createCodexHandler(dependencies) {
       const conversation = validateConversation(body);
       if (req.aborted || res.destroyed) return;
       const model = config.codex_model || 'gpt-5.6-sol';
+      const effort = config.codex_effort || 'high';
       const workDir = config.codex_work_dir || os.tmpdir();
       const mode = String(config.codex_reasoning_mode || 'summary').toLowerCase();
       const reasoningMode = ['summary', 'raw', 'both', 'none'].includes(mode) ? mode : 'summary';
@@ -158,6 +159,7 @@ function createCodexHandler(dependencies) {
       });
       if (typeof thread?.thread?.id !== 'string' || !thread.thread.id) throw new Error('Codex returned an invalid thread ID');
       threadId = thread.thread.id;
+      if (thread.model) lifecycle.setModel(thread.model);
       lifecycle.check();
       lifecycle.startStream();
       const turnResult = await client.request('turn/start', {
@@ -168,7 +170,7 @@ function createCodexHandler(dependencies) {
           'Return only the next assistant message.'
         ].join('\n\n'), text_elements: [] }],
         cwd: workDir, approvalPolicy: 'never', sandboxPolicy: { type: 'readOnly', networkAccess: false },
-        model, effort: config.codex_effort || 'high',
+        model, effort,
         summary: reasoningMode === 'none' ? 'none' : config.codex_reasoning_summary || 'detailed'
       });
       if (typeof turnResult?.turn?.id !== 'string' || !turnResult.turn.id) throw new Error('Codex returned an invalid turn ID');
