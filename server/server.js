@@ -9,7 +9,7 @@ const { parseBody, requestError, validateMessageBody } = require('./HttpRequest'
 const { loginPage, resultPage } = require('./AuthPages');
 const { createDashboard, requireSameOrigin } = require('./Dashboard');
 const { createRequestActivity, markActivityFailure } = require('./RequestActivity');
-const { createAntigravityModels } = require('./AntigravityModels');
+const { createAccountModels } = require('./AccountModels');
 const { createMimoModels } = require('./MimoModels');
 const { createKimiModels, DEFAULT_MODEL: DEFAULT_KIMI_MODEL } = require('./KimiModels');
 const path = require('node:path');
@@ -153,7 +153,7 @@ function createApp(options = {}) {
       profiles.closeConnection(id);
       delete accounts[id];
     },
-    antigravityModels: createAntigravityModels(modelSettings),
+    accountModels: createAccountModels({ profiles, registry, configFile: options.configFile, discover: options.discoverModels }),
     kimiModels: createKimiModels(modelSettings),
     mimoModels: createMimoModels(modelSettings),
     getAuthGeneration: account => accountGenerations.get(account.id) || 0,
@@ -281,6 +281,14 @@ function createApp(options = {}) {
             : profiles.get(connection).config.kimi_model || DEFAULT_KIMI_MODEL) : undefined;
         await profiles.handlers(connection)[providerMethod](req, res, body, model);
         return;
+      }
+      if (body.model === 'claude-fable-5-2') {
+        if ((body.thinking && body.thinking.type !== 'adaptive') || body.thinking?.budget_tokens !== undefined) {
+          throw requestError('Fable 5.2 uses adaptive thinking. Remove the fixed thinking budget and omit thinking or set its type to adaptive.');
+        }
+        if (['any', 'tool'].includes(body.tool_choice?.type)) {
+          throw requestError('Fable 5.2 does not support forced tool use. Use automatic tool choice or omit tool_choice.');
+        }
       }
       const account = getAccount(connection);
       const preset = account.id === 'claude1' ? presetMatch?.[1] || null : null;

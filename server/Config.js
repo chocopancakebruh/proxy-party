@@ -19,7 +19,7 @@ function parseConfig(contents) {
     const separator = trimmed.indexOf('=');
     if (separator < 1) throw new Error(`Invalid configuration entry: ${trimmed.split('=')[0]}`);
     const key = trimmed.slice(0, separator).trim();
-    const rawValue = trimmed.slice(separator + 1).trim();
+    const rawValue = trimmed.slice(separator + 1);
     const value = rawValue.replace(/\s+#.*$/, '').trim();
     config[key] = value;
   }

@@ -20,7 +20,7 @@ function fixture(t) {
   return { root, filename, profilesDir, config, registry };
 }
 
-async function serverFixture(t, extraConfig = {}) {
+async function serverFixture(t, extraConfig = {}, overrides = {}) {
   const result = fixture(t);
   Object.assign(result.config, extraConfig);
   const accounts = Object.fromEntries(['claude1', 'claude2'].map(id => [id, {
@@ -54,7 +54,7 @@ async function serverFixture(t, extraConfig = {}) {
   const configFile = path.join(result.root, 'config.txt');
   fs.writeFileSync(configFile, 'mimo_model=xiaomi/mimo-v2.6-pro\n');
   const server = createServer({ registry: result.registry, config: result.config, configFile, accounts, logger: quiet,
-    ClaudeRequest: FakeClaude, cliAuthFactory, providerFactory });
+    ClaudeRequest: FakeClaude, cliAuthFactory, providerFactory, ...overrides });
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
   t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); });
   const base = `http://127.0.0.1:${server.address().port}`;
@@ -216,6 +216,60 @@ test('Carbon selection persists and reaches the next request on original and re-
   assert.equal((await h.chat(route)).status, 200);
   assert.equal(h.requests.at(-1).options.config.argon_model, model);
   assert.equal(createConnectionRegistry({ filename: h.filename }).get(added.id).settings.model, model);
+});
+
+test('CLI model catalogs and saved effort belong to the account making the query', async t => {
+  const live = [{ id: 'live-model', label: 'Synthetic model', efforts: ['medium', 'max'], defaultEffort: 'medium' }];
+  let queriedHome;
+  let failCatalog = false;
+  const h = await serverFixture(t, {}, { async discoverModels(provider, runtime) {
+    queriedHome = runtime.home;
+    if (failCatalog) throw Error('CLI offline');
+    return provider === 'muse' ? [{ id: 'muse-wonder-full', label: 'Muse Wonder Full' }] : live;
+  } });
+  const a = await h.add('codex'), b = await h.add('codex');
+  const route = 'providers/' + a.id;
+  assert.equal((await h.api(route + '/catalog', {})).status, 200);
+  assert.equal(queriedHome, h.registry.profileDir(a.id));
+  assert.equal((await h.api(route + '/model', { model: 'live-model', effort: 'max' })).status, 200);
+  assert.equal((await h.api(route + '/model', { model: 'live-model', effort: 'ultra' })).status, 400);
+  assert.equal((await h.api('providers/' + b.id + '/model', { model: 'live-model' })).status, 400);
+  await h.chat(new URL(a.proxyUrl).pathname);
+  assert.equal(h.requests.at(-1).options.config.codex_effort, 'max');
+  assert.deepEqual(createConnectionRegistry({ filename: h.filename }).get(a.id).settings, { model: 'live-model', effort: 'max' });
+  assert.equal((await h.api('providers/codex/model', { model: 'gpt-6.1-sol', effort: 'xhigh' })).status, 200);
+  const disk = require('./Config').loadConfig(path.join(h.root, 'config.txt'), {});
+  assert.equal(disk.codex_model, 'gpt-6.1-sol');
+  assert.equal(disk.codex_effort, 'xhigh');
+  assert.equal((await h.api('providers/muse/model', { model: 'muse-wonder-full' })).status, 400);
+  await h.api('providers/muse/catalog', {});
+  assert.equal((await h.api('providers/muse/model', { model: 'muse-wonder-full' })).status, 200);
+  await h.chat('/v1/muse');
+  assert.equal(h.requests.at(-1).options.config.muse_model, 'muse-wonder-full');
+  assert.equal((await h.api('providers/muse/model', { model: 'cli-default' })).status, 200);
+  await h.chat('/v1/muse');
+  assert.equal(h.requests.at(-1).options.config.muse_model, '');
+  failCatalog = true;
+  assert.equal((await h.api('providers/muse/catalog', {})).status, 502);
+  assert.equal((await h.api('providers/muse/model', { model: 'muse-wonder-full' })).status, 400);
+  assert.equal(require('./Config').parseConfig('muse_model=  # use the CLI default').muse_model, '');
+  assert.equal((await h.api('providers/argon/model', { model: 'gemini-3.8-flash-medium' })).status, 200);
+  await h.chat('/v1/argon');
+  assert.equal(h.requests.at(-1).options.config.argon_model, 'gemini-3.8-flash-medium');
+});
+
+test('Fable 5.2 explains incompatible settings on Claude routes only', async t => {
+  const h = await serverFixture(t);
+  const send = (route, settings) => fetch(h.base + route + '/messages', { method: 'POST',
+    body: JSON.stringify({ model: 'claude-fable-5-2', messages: [{ role: 'user', content: 'Hi' }], ...settings }) });
+  for (const settings of [{ thinking: { type: 'enabled', budget_tokens: 800 } }, { thinking: { type: 'disabled' } }, { tool_choice: { type: 'any' } }]) {
+    const result = await send('/v1/claude2', settings);
+    assert.equal(result.status, 400);
+    assert.match((await result.json()).error.message, /Fable 5.2/);
+  }
+  assert.equal(h.requests.length, 0);
+  assert.equal((await send('/v1', { thinking: { type: 'adaptive' } })).status, 200);
+  assert.equal((await send('/v1/kimi', { thinking: { type: 'enabled', budget_tokens: 800 } })).status, 200);
 });
 
 test('MiMo model changes persist per connection and never alter another account or legacy config', async t => {

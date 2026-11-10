@@ -6,6 +6,7 @@ const { providerDefinition, connectionPath } = require('./ConnectionRegistry');
 
 const ASSETS = Object.freeze({
   '/dashboard/': ['index.html', 'text/html; charset=utf-8'],
+  '/dashboard/connection-test.js': ['connection-test.js', 'application/javascript; charset=utf-8'],
   '/dashboard/app.js': ['app.js', 'application/javascript; charset=utf-8'],
   '/dashboard/style.css': ['style.css', 'text/css; charset=utf-8']
 });
@@ -31,10 +32,10 @@ function requireSameOrigin(req) {
   }
 }
 
-function createDashboard({ config, authenticate, sendJson, startLogin, logout, refresh, getAuthGeneration, activity, mimoModels, kimiModels, antigravityModels,
+function createDashboard({ config, authenticate, sendJson, startLogin, logout, refresh, getAuthGeneration, activity, mimoModels, kimiModels, accountModels,
   registry, getAccount, profiles, removeConnection }) {
   const assets = new Map();
-  const modelPickers = { mimo: mimoModels, kimi: kimiModels, argon: antigravityModels };
+  const modelPickers = { mimo: mimoModels, kimi: kimiModels };
   function description(connection, baseUrl) {
     const { handler, ...definition } = providerDefinition(connection.provider);
     return { ...definition, id: connection.id, provider: connection.provider, label: connection.label,
@@ -91,13 +92,14 @@ function createDashboard({ config, authenticate, sendJson, startLogin, logout, r
         const status = account ? { ...account.manager.getStatus(), authGeneration: getAuthGeneration(account), loginRunning: false }
           : (await profiles.auth(connection).getStatuses({ force, providerId: connection.provider })).find(item => item.id === connection.provider);
         const picker = modelPickers[connection.provider];
-        return { ...status, ...description(connection, baseUrl),
-          ...(picker ? { modelSelection: picker.getSelection(connection.legacy ? config : profiles.get(connection).config) } : {}) };
+        const modelSelection = accountModels?.supports(connection.provider) ? accountModels.selection(connection)
+          : picker?.getSelection(connection.legacy ? config : profiles.get(connection).config);
+        return { ...status, ...description(connection, baseUrl), ...(modelSelection ? { modelSelection } : {}) };
       }));
       sendJson(res, 200, { providers: providers.filter(provider => registry.get(provider.id)), catalog: registry.catalog(), server: { baseUrl } });
       return true;
     }
-    const actionRoute = pathname.match(/^\/dashboard\/api\/providers\/([a-z0-9-]+)\/(login|reset|logout|refresh|remove|model)$/);
+    const actionRoute = pathname.match(/^\/dashboard\/api\/providers\/([a-z0-9-]+)\/(login|reset|logout|refresh|remove|model|catalog)$/);
     if (!actionRoute) throw requestError('Not found', 404);
     if (req.method !== 'POST') throw requestError('Method not allowed', 405);
     const [, providerId, action] = actionRoute;
@@ -106,6 +108,17 @@ function createDashboard({ config, authenticate, sendJson, startLogin, logout, r
     if (action === 'remove') {
       removeConnection(providerId);
       sendJson(res, 200, { message: 'Connection removed. Its URL is disabled. Saved credentials are retained; running requests can finish.' });
+      return true;
+    }
+    if (action === 'catalog') {
+      if (!accountModels?.supports(connection.provider)) throw requestError('This CLI does not expose a model catalog here.');
+      sendJson(res, 200, { modelSelection: await accountModels.refresh(connection) });
+      return true;
+    }
+    if (action === 'model' && accountModels?.supports(connection.provider)) {
+      const body = await parseBody(req, { ...config, max_body_bytes: 1024 });
+      if (!registry.get(providerId)) throw requestError('Connection removed', 404);
+      sendJson(res, 200, { modelSelection: accountModels.save(connection, body), message: 'Settings saved for new requests.' });
       return true;
     }
     if (action === 'model') {

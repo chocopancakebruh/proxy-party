@@ -99,9 +99,10 @@ function createConnectionRegistry({ filename, profilesDir = path.join(__dirname,
       if (!get(id)) throw requestError('Unknown connection', 404);
       commit(connections.filter(connection => connection.id !== id));
     },
-    setModel(id, model) {
+    setModel(id, model) { this.setSettings(id, { model }); },
+    setSettings(id, settings) {
       if (!get(id)) throw requestError('Unknown connection', 404);
-      commit(connections.map(connection => connection.id === id ? { ...connection, settings: { ...connection.settings, model } } : connection));
+      commit(connections.map(connection => connection.id === id ? { ...connection, settings: { ...connection.settings, ...settings } } : connection));
     }
   };
 }

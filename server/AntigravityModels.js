@@ -6,7 +6,9 @@ const MODELS = Object.freeze([
   { id: 'gemini-4-carbon-high', label: 'Gemini 4 Carbon (High)' },
   { id: 'gemini-4-carbon-medium', label: 'Gemini 4 Carbon (Medium)' },
   { id: 'gemini-4-carbon-low', label: 'Gemini 4 Carbon (Low)' },
-  { id: DEFAULT_MODEL, label: 'Gemini 4 Argon (High)' }
+  { id: DEFAULT_MODEL, label: 'Gemini 4 Argon (High)' },
+  { id: 'gemini-3.8-flash-medium', label: 'Gemini 3.8 Flash (Medium)' },
+  { id: 'gemini-3.8-flash-high', label: 'Gemini 3.8 Flash (High)' }
 ].map(Object.freeze));
 
 function createAntigravityModels(settings) {
@@ -16,4 +18,4 @@ function createAntigravityModels(settings) {
   });
 }
 
-module.exports = { createAntigravityModels, DEFAULT_MODEL };
+module.exports = { createAntigravityModels, DEFAULT_MODEL, MODELS };

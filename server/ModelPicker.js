@@ -23,6 +23,21 @@ function replaceModel(contents, key, model) {
   return contents + (contents && !contents.endsWith('\n') ? newline : '') + key + '=' + model + newline;
 }
 
+function saveSettings({ config, configFile = path.join(__dirname, 'config.txt'), io = fs }, values, label) {
+  const temporary = `${configFile}.${randomUUID()}.tmp`;
+  try {
+    let updated = io.readFileSync(configFile, 'utf8');
+    for (const [key, value] of Object.entries(values)) updated = replaceModel(updated, key, value);
+    io.writeFileSync(temporary, updated, { flag: 'wx', mode: io.statSync(configFile).mode });
+    io.renameSync(temporary, configFile);
+  } catch {
+    throw requestError(`Could not save the ${label} model. Check that server/config.txt is writable, then try again. The active model was not changed.`, 500);
+  } finally {
+    try { io.unlinkSync(temporary); } catch {}
+  }
+  Object.assign(config, values);
+}
+
 function createModelPicker({ config, configFile = path.join(__dirname, 'config.txt'), io = fs },
   { key, label, options, defaultModel, invalidMessage = `Choose a ${label} model from the list.` }) {
   function getSelection(settings = config) {
@@ -33,20 +48,10 @@ function createModelPicker({ config, configFile = path.join(__dirname, 'config.t
   }
   function select(model) {
     validate(model);
-    const temporary = `${configFile}.${randomUUID()}.tmp`;
-    try {
-      const updated = replaceModel(io.readFileSync(configFile, 'utf8'), key, model);
-      io.writeFileSync(temporary, updated, { flag: 'wx', mode: io.statSync(configFile).mode });
-      io.renameSync(temporary, configFile);
-    } catch {
-      throw requestError(`Could not save the ${label} model. Check that server/config.txt is writable, then try again. The active model was not changed.`, 500);
-    } finally {
-      try { io.unlinkSync(temporary); } catch {}
-    }
-    config[key] = model;
+    saveSettings({ config, configFile, io }, { [key]: model }, label);
     return getSelection();
   }
   return { label, getSelection, validate, select };
 }
 
-module.exports = { createModelPicker, modelSelection };
+module.exports = { createModelPicker, modelSelection, saveSettings };
