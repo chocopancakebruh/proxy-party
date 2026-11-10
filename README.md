@@ -1,6 +1,6 @@
 # Proxy Party
 
-Proxy Party connects your AI accounts to clients such as SillyTavern through a local Anthropic-compatible API. Manage Claude, Kimi, Codex, Grok, Antigravity (Argon), MiMo Code, and Meta Muse Code from one dashboard.
+Proxy Party connects your AI accounts to clients such as SillyTavern through a local Anthropic-compatible API. Manage Claude, Kimi, Codex, Grok, Google Antigravity (Gemini 4 Argon and Carbon), MiMo Code, and Meta Muse Code from one dashboard.
 
 Click **+ Add provider** to add a connection, sign in, and copy its URL into your client. You can add the same provider more than once to use separate accounts. Argon currently supports one system-account connection.
 
@@ -100,7 +100,7 @@ Install only the CLIs for providers you plan to use, following that provider's i
 | Kimi | `kimi` | Dashboard launches `kimi login` on Windows |
 | Codex | `codex` | Dashboard launches `codex login` on Windows |
 | Grok | `grok` | Dashboard launches `grok login` on Windows |
-| Antigravity / Argon | `agy` | Use the CLI's own account controls; one shared system account |
+| Antigravity (Argon and Carbon) | `agy` | Use the CLI's own account controls; one shared system account |
 | MiMo Code | `mimo` | See [MiMo and Meta Muse setup](#mimo-and-meta-muse-setup) |
 | Meta Muse Code | `muse` | See [MiMo and Meta Muse setup](#mimo-and-meta-muse-setup) |
 
@@ -127,7 +127,7 @@ For updates, stop the proxy first, obtain the new code, and run `npm ci` again (
 
 Click **+ Add provider**, choose a provider, optionally name the connection, then click **Add connection**. Use its **Sign in** button and copy the URL from that card into your client. You can add Claude repeatedly for three, four, or more subscriptions, and add separate Kimi, Codex, Grok, MiMo, and Muse accounts. Argon is limited to one connection because its CLI uses shared OS keyring authentication. Changes take effect immediately and survive a restart.
 
-Argon remains available in the provider picker. While an Argon connection exists, its option is disabled with an explanation; after removal it can be added again using the same system sign-in. Additional isolated Argon subscriptions would require an upstream account-isolation mechanism or separate OS users. See [the official CLI authentication description](https://github.com/google-antigravity/antigravity-cli#authentication).
+Antigravity remains available in the provider picker. While an Antigravity connection exists, its option is disabled with an explanation; after removal it can be added again using the same system sign-in. Additional isolated Argon subscriptions would require an upstream account-isolation mechanism or separate OS users. See [the official CLI authentication description](https://github.com/google-antigravity/antigravity-cli#authentication).
 
 When there is no saved connection registry, the first start creates the eight original connection cards. On an existing installation, those cards preserve its Claude token files, CLI sign-ins, configuration, and URLs. A fresh download contains no saved sign-ins. Remove cards you do not need; an empty collection stays empty across restarts. Re-adding a provider creates a fresh connection with a new URL; independent providers also get a fresh profile.
 
@@ -234,7 +234,7 @@ In SillyTavern, copy the base URL from the connection's dashboard card into the 
 | Kimi K3 | `http://localhost:42069/v1/kimi-1m` | `kimi-code/k3` |
 | Codex | `http://localhost:42069/v1/codex` | `codex_model` |
 | Grok | `http://localhost:42069/v1/grok` | `grok_model` |
-| Argon | `http://localhost:42069/v1/argon` | `argon_model` |
+| Antigravity (Argon and Carbon) | `http://localhost:42069/v1/argon` | `argon_model` |
 | MiMo | `http://localhost:42069/v1/mimo` | `mimo_model`, otherwise the CLI's reported MiMo default |
 | Meta Muse | `http://localhost:42069/v1/muse` | `muse_model`, otherwise the CLI's default Meta model |
 
@@ -244,7 +244,9 @@ CLI adapters support conversational text. Image/tool content and nonempty tool d
 
 Codex runs with a read-only sandbox and supported CLI feature gates that disable command execution, browser/computer tools, apps, plugins, and delegation. The adapter also disables inherited MCP servers and rejects tool-operation events. These controls depend on the installed CLI protocol and are not operating-system isolation; keep this proxy in the intended local environment.
 
-Argon uses a separate temporary workspace per request with a conversational agent profile. Its answer streams normally. When the CLI saves a matching completed transcript, available reasoning may arrive after the answer, before the stream ends. Missing or unusable reasoning logs do not prevent the answer from completing.
+To use **Gemini 4 Carbon**, open the **Antigravity** card (it may be named **Argon** on existing installs) and select a Carbon thinking level under **Model**. The choice is saved and applies to the next request at the URL on that card. The original connection defaults to Gemini 4 Argon (High). Run `agy models` in your signed-in terminal to see which models your account can use.
+
+Antigravity uses a separate temporary workspace per request with a conversational agent profile. Its answer streams normally. When the CLI saves a matching completed transcript, available reasoning may arrive after the answer, before the stream ends. Missing or unusable reasoning logs do not prevent the answer from completing.
 
 `GET /health` reports server availability and the active-request count, not provider authentication or model availability. Tray-launched instances also report a non-secret installation identifier for safe launcher coordination.
 
