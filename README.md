@@ -232,11 +232,17 @@ In SillyTavern, copy the base URL from the connection's dashboard card into the 
 | Kimi | `http://localhost:42069/v1/kimi` | Dashboard choice / `kimi_model`; defaults to `kimi-code/k3-256k` |
 | Kimi K3 256K (fixed) | `http://localhost:42069/v1/kimi-256k` | `kimi-code/k3-256k` |
 | Kimi K3 | `http://localhost:42069/v1/kimi-1m` | `kimi-code/k3` |
-| Codex | `http://localhost:42069/v1/codex` | `codex_model` |
+| Codex | `http://localhost:42069/v1/codex` | Dashboard model and reasoning effort |
 | Grok | `http://localhost:42069/v1/grok` | `grok_model` |
 | Antigravity (Argon and Carbon) | `http://localhost:42069/v1/argon` | `argon_model` |
 | MiMo | `http://localhost:42069/v1/mimo` | `mimo_model`, otherwise the CLI's reported MiMo default |
-| Meta Muse | `http://localhost:42069/v1/muse` | `muse_model`, otherwise the CLI's default Meta model |
+| Meta Muse | `http://localhost:42069/v1/muse` | Dashboard model or Muse Code default |
+
+**Test connection** sends one short message through the URL on that card and uses provider quota. Success requires a completed text reply. The result shows the model in the response when available. On Claude cards, **Test model** applies only to the test. SillyTavern still selects its own model.
+
+Codex, Muse, and Antigravity read the signed-in CLI’s model list when their cards come into view. Use **Refresh models** after signing in or updating a CLI. Built-in choices are available if the CLI cannot list models. Codex offers only the reasoning efforts listed for the selected model and saves both settings together. Muse includes Spark 1.3, Ember 1.0, Wonder 1.0, and the CLI default. Wonder Full appears when the Muse CLI offers it. Antigravity includes Gemini 3.8 Flash alongside Carbon and Argon. Selections apply to new requests on that connection.
+
+For **Claude Fable 5.2**, set the model in your client to `claude-fable-5-2`. If a preset sets a fixed thinking budget, remove it and omit `thinking` or use `{"type":"adaptive"}`. Fable 5.2 also requires automatic or omitted tool choice when using tools. See [Anthropic’s Fable 5.2 guide](https://platform.claude.com/docs/en/models/fable-5-2/whats-new-fable-5-2).
 
 Send a JSON object containing a nonempty `messages` array, with `user` or `assistant` roles. `system` is a separate top-level field. Set `stream: true` for SSE.
 
@@ -257,7 +263,7 @@ These routes use the official local CLIs and the selected connection's sign-in; 
 - MiMo: install the Windows CLI with `npm install -g @mimo-ai/cli`, then run `mimo auth login` and choose the intended account and Token Plan or pay-as-you-go authorization. See [Xiaomi's MiMo Code setup](https://mimo.mi.com/docs/en-US/tokenplan/integration/mimo-code).
 - Meta Muse: follow the [official Muse Code installation](https://dev.meta.ai/docs/muse-code), then run `muse` and complete sign-in (or `/login` in an existing interactive session). Muse uses `META_API_KEY` before stored API keys or browser sign-in, so check that environment variable if you intend to use a browser-authenticated subscription. See [Meta's authentication documentation](https://dev.meta.ai/docs/muse-code/auth).
 
-Restart the proxy after installing a CLI or manually changing `server/config.txt`. Kimi and MiMo model changes made through the dashboard take effect immediately. In SillyTavern's Claude/Anthropic mode, set the custom endpoint to `http://localhost:42069/v1/mimo` or `http://localhost:42069/v1/muse`. Both routes support JSON and SSE text/reasoning responses and cancel their CLI process when the client disconnects or the request times out. CLI account access and billing remain controlled by the provider; the proxy does not create a subscription or choose a different account on failure.
+Restart the proxy after installing a CLI or manually changing `server/config.txt`. Model and effort changes saved in the dashboard take effect on the next request. In SillyTavern's Claude/Anthropic mode, set the custom endpoint to `http://localhost:42069/v1/mimo` or `http://localhost:42069/v1/muse`. Both routes support JSON and SSE text/reasoning responses and cancel their CLI process when the client disconnects or the request times out. CLI account access and billing remain controlled by the provider; the proxy does not create a subscription or choose a different account on failure.
 
 These are chat-only adapters: model tools are disabled and tool-operation events are rejected. They still run local CLI software under your Windows account, not inside an operating-system security boundary. Keep the CLI's own settings and integrations trusted; inherited configuration may initialize MCP servers or other startup integrations. Provider-managed policies remain in effect. Do not use an untrusted CLI configuration for this proxy.
 
