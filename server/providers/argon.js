@@ -1,3 +1,4 @@
+const { DEFAULT_MODEL } = require('../AntigravityModels');
 const { startAnthropicStream, writeAnthropicEvent } = require('./AnthropicStream');
 const { stopProcess } = require('./process');
 const { validateConversation } = require('./common');
@@ -64,7 +65,7 @@ function createArgonHandler(dependencies = {}) {
 
   async function handleArgonRequest(req, res, body) {
     const command = config.argon_command || (process.platform === 'win32' ? 'agy.exe' : 'agy');
-    const model = config.argon_model || 'gemini-4-argon-high';
+    const model = config.argon_model || DEFAULT_MODEL;
     const configuredTimeout = Number(config.argon_timeout_ms || 300000);
     const timeoutMs = Number.isFinite(configuredTimeout)
       ? Math.min(2147483647, Math.max(1000, Math.floor(configuredTimeout))) : 300000;
