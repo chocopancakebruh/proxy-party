@@ -118,7 +118,7 @@
     const detail = node('p', 'provider-detail', definition.detail);
     const message = node('p', 'provider-message', 'Waiting for your local proxy…');
     const expiry = node('p', 'provider-expiry');
-    let modelSettings, modelSelect, modelFeedback;
+    let modelSettings, modelSelect, modelFeedback, effortSelect, catalogButton, testModel;
     if (definition.modelSelection) {
       modelSettings = node('div', 'model-settings');
       const modelLabel = node('label', 'model-label', 'MODEL');
@@ -131,7 +131,20 @@
       modelFeedback.id = `${definition.id}-model-feedback`;
       modelFeedback.setAttribute('role', 'status');
       modelSelect.addEventListener('change', () => saveModel(definition.id, modelSelect.value));
-      modelSettings.append(modelLabel, modelSelect, modelFeedback);
+      modelSettings.append(modelLabel, modelSelect);
+      if (definition.provider === 'codex') {
+        const label = node('label', 'model-label', 'REASONING EFFORT');
+        label.htmlFor = definition.id + '-effort';
+        effortSelect = node('select', 'model-select');
+        effortSelect.id = label.htmlFor;
+        effortSelect.addEventListener('change', () => saveModel(definition.id, modelSelect.value, effortSelect.value));
+        modelSettings.append(label, effortSelect);
+      }
+      if (definition.modelSelection.catalogSource) {
+        catalogButton = button('button button-quiet', 'Refresh models', () => refreshModels(definition.id));
+        modelSettings.append(catalogButton);
+      }
+      modelSettings.append(modelFeedback);
     }
     const endpointLabel = node('label', 'endpoint-label', 'SILLYTAVERN ENDPOINT');
     endpointLabel.htmlFor = `endpoint-${definition.id}`;
@@ -167,16 +180,48 @@
     const logout = button('button button-quiet', 'Sign out', () => confirmAction(definition.id, 'logout', logout));
     const remove = button('button button-quiet card-remove', 'Remove', () => confirmAction(definition.id, 'remove', remove));
     remove.setAttribute('aria-label', `Remove ${definition.label}`);
-    actions.append(login, refresh, reset, logout, remove);
+    const test = button('button button-outline', 'Test connection', () => testConnection(definition.id));
+    test.title = 'Send one short message through this connection. Uses provider quota.';
+    const testFeedback = node('p', 'model-feedback');
+    testFeedback.setAttribute('role', 'status');
+    testFeedback.hidden = true;
+    if (definition.kind === 'oauth') {
+      const label = node('label', 'model-label', 'TEST MODEL');
+      label.htmlFor = definition.id + '-test-model';
+      testModel = node('select', 'model-select');
+      testModel.id = label.htmlFor;
+      for (const [id, name] of [['claude-haiku-5-5', 'Claude Haiku 5.5'], ['claude-fable-5-2', 'Claude Fable 5.2']]) {
+        const option = node('option', '', name);
+        option.value = id;
+        testModel.append(option);
+      }
+      modelSettings = node('div', 'model-settings');
+      modelSettings.append(label, testModel);
+    }
+    actions.append(login, test, refresh, reset, logout, remove);
     const hint = node('p', 'card-hint', definition.independentAccounts === false ? 'Antigravity shares this computer’s CLI sign-in.' : definition.legacy && definition.kind === 'cli'
       ? 'Uses your existing CLI account. Add another for a separate sign-in.' : 'Sign-in and settings belong to this connection.');
     card.append(top, category, title, detail, message, expiry);
     if (modelSettings) card.append(modelSettings);
-    card.append(endpointLabel, endpointRow, actions, hint);
+    card.append(endpointLabel, endpointRow, actions, testFeedback, hint);
     elements['provider-grid'].append(card);
-    cards.set(definition.id, { definition, card, badge, message, expiry, endpoint, copy, login, refresh, reset, logout, remove, modelSelect, modelFeedback });
+    cards.set(definition.id, { definition, card, badge, message, expiry, endpoint, copy, login, refresh, reset, logout, remove, modelSelect, modelFeedback, effortSelect, catalogButton, test, testModel, testFeedback });
     providers.set(definition.id, { ...definition, state: 'unknown' });
     updateCard(definition.id);
+    if (catalogButton && definition.modelSelection.catalogSource === 'built-in') {
+      modelFeedback.textContent = 'Built-in choices. Refresh models to check this account.';
+      // Discover visible accounts once. Status polling never launches a CLI.
+      if (definition.state !== 'unavailable' && typeof IntersectionObserver !== 'undefined') {
+        const observer = new IntersectionObserver(entries => {
+          if (entries.some(entry => entry.isIntersecting)) {
+            observer.disconnect();
+            if (cards.get(definition.id)?.card === card) refreshModels(definition.id);
+          }
+        });
+        observer.observe(card);
+        cards.get(definition.id).observer = observer;
+      }
+    }
   }
 
   function updateCard(id) {
@@ -216,6 +261,29 @@
       card.modelSelect.disabled = loading || busy || statusStale || !selection;
       card.modelSelect.setAttribute('aria-busy', String(thisAction === 'model'));
     }
+    if (card.effortSelect) {
+      const selection = provider.modelSelection;
+      const efforts = selection?.options.find(option => option.id === selection.selected)?.efforts || [];
+      const signature = efforts.join(',');
+      if (signature !== card.efforts) {
+        card.efforts = signature;
+        card.effortSelect.replaceChildren(...efforts.map(e => {
+          const option = node('option', '', e);
+          option.value = e;
+          return option;
+        }));
+      }
+      if (thisAction !== 'model') card.effortSelect.value = selection?.effort || '';
+      card.effortSelect.disabled = loading || busy || statusStale || card.catalogLoading || !efforts.length;
+    }
+    if (card.catalogButton) {
+      card.catalogButton.disabled = loading || busy || statusStale || card.catalogLoading;
+      card.catalogButton.textContent = card.catalogLoading ? 'Reading CLI models…' : 'Refresh models';
+      if (card.catalogLoading) card.modelSelect.disabled = true;
+    }
+    card.test.disabled = loading || busy || statusStale || !endpoint || Boolean(provider.loginRunning);
+    card.test.textContent = thisAction === 'test' ? 'Testing…' : 'Test connection';
+    if (card.testModel) card.testModel.disabled = card.test.disabled;
     card.login.hidden = !provider.canLogin;
     card.login.disabled = busy || Boolean(provider.loginRunning);
     card.login.textContent = thisAction === 'login' ? 'Opening sign-in…' : provider.loginRunning ? 'Sign-in running…'
@@ -246,18 +314,64 @@
     updateActivityControls();
   }
 
-  async function saveModel(id, model) {
+  async function refreshModels(id) {
+    const card = cards.get(id);
+    if (!card || card.catalogLoading || activeAction) return;
+    card.catalogLoading = true;
+    card.modelFeedback.textContent = 'Reading this account’s model list…';
+    updateCard(id);
+    try {
+      const result = await request('/dashboard/api/providers/' + encodeURIComponent(id) + '/catalog', { method: 'POST' });
+      if (cards.get(id) !== card) return;
+      providers.get(id).modelSelection = result.modelSelection;
+      card.modelFeedback.dataset.tone = '';
+      card.modelFeedback.textContent = 'Models reported by this account’s CLI.';
+    } catch (error) {
+      card.modelFeedback.dataset.tone = 'error';
+      card.modelFeedback.textContent = error.message;
+      await refreshStatus();
+    } finally {
+      card.catalogLoading = false;
+      if (cards.get(id) === card) updateCard(id);
+    }
+  }
+
+  async function testConnection(id) {
+    const card = cards.get(id);
+    const provider = providers.get(id);
+    if (loading || activeAction || !card || !provider) return;
+    activeAction = { id, action: 'test' };
+    updateControls();
+    card.testFeedback.hidden = false;
+    card.testFeedback.dataset.tone = '';
+    card.testFeedback.textContent = 'Waiting for a completed reply…';
+    const signal = AbortSignal.timeout(120000);
+    try {
+      const model = await probeConnection({ proxyUrl: provider.proxyUrl, origin: location.origin,
+        proxyKey, claudeModel: card.testModel?.value, signal });
+      card.testFeedback.textContent = 'Reply received.' + (model ? ' Response model: ' + model : '');
+    } catch (error) {
+      card.testFeedback.dataset.tone = 'error';
+      card.testFeedback.textContent = signal.aborted ? 'Connection test timed out.' : error.message;
+    } finally {
+      activeAction = null;
+      updateControls();
+      refreshActivity();
+    }
+  }
+
+  async function saveModel(id, model, effort) {
     if (loading || activeAction) return;
     const provider = providers.get(id);
     const card = cards.get(id);
-    if (model === provider.modelSelection?.selected) return;
+    if (model === provider.modelSelection?.selected && (effort === undefined || effort === provider.modelSelection.effort)) return;
     activeAction = { id, action: 'model' };
     card.modelFeedback.dataset.tone = '';
     card.modelFeedback.textContent = 'Saving model…';
     updateControls();
     try {
       const result = await request(`/dashboard/api/providers/${encodeURIComponent(id)}/model`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model })
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model, effort })
       });
       providers.get(id).modelSelection = result.modelSelection;
       card.modelFeedback.textContent = 'Saved. New requests use this model.';
@@ -433,7 +547,7 @@
       catalog = Array.isArray(data.catalog) ? data.catalog : [];
       const currentIds = new Set(data.providers.map(provider => provider.id));
       for (const [id, card] of cards) {
-        if (!currentIds.has(id)) { card.card.remove(); cards.delete(id); providers.delete(id); }
+        if (!currentIds.has(id)) { card.observer?.disconnect(); card.card.remove(); cards.delete(id); providers.delete(id); }
       }
       for (const current of data.providers) {
         if (!cards.has(current.id)) renderCard(current);
@@ -673,7 +787,7 @@
   function canBackgroundRefresh() {
     return !document.hidden && !activeAction && !elements['login-dialog'].open &&
       !elements['confirm-dialog'].open && !elements['add-dialog'].open && !elements['key-panel'].contains(document.activeElement) &&
-      ![...cards.values()].some(card => document.activeElement === card.modelSelect);
+      ![...cards.values()].some(card => [card.modelSelect, card.effortSelect, card.testModel].includes(document.activeElement));
   }
   setInterval(() => { if (canBackgroundRefresh() && !loading) refreshStatus(); }, 15000);
   setInterval(() => { if (canBackgroundRefresh()) refreshActivity(); }, 5000);

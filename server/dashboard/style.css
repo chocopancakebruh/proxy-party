@@ -95,6 +95,8 @@ input { min-width: 0; border: 1px solid #cdd1c7; border-radius: 8px; background:
 .model-settings { margin: 0 0 16px; }
 .model-label { display: block; color: #7b8278; font-size: 8px; font-weight: 750; letter-spacing: .85px; margin-bottom: 6px; }
 .model-select { width: 100%; min-width: 0; border: 1px solid #cdd1c7; border-radius: 8px; background: white; color: var(--ink); padding: 10px 8px; font-size: 12px; }
+.model-select + .model-label { margin-top: 10px; }
+.model-settings > .button { margin-top: 6px; }
 .model-select:disabled { opacity: .65; cursor: wait; }
 .model-feedback { margin: 7px 0 0; color: #7e867a; font-size: 10px; line-height: 1.5; overflow-wrap: anywhere; }
 .model-feedback[data-tone="error"] { color: #9a4b31; }
