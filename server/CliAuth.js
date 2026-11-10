@@ -9,7 +9,7 @@ const PROVIDERS = Object.freeze([
   { id: 'kimi', label: 'Kimi', command: 'kimi', args: ['login'], guidance: 'Run kimi login in your usual terminal.' },
   { id: 'codex', label: 'Codex', command: 'codex', args: ['login'], guidance: 'Run codex login in your usual terminal.' },
   { id: 'grok', label: 'Grok', command: 'grok', args: ['login'], guidance: 'Run grok login in your usual terminal.' },
-  { id: 'argon', label: 'Argon', command: 'agy', guidance: 'Open Argon in your usual terminal and use its supported account controls.' },
+  { id: 'argon', label: 'Antigravity', command: 'agy', guidance: 'Open agy in your usual terminal and use its supported account controls.' },
   { id: 'mimo', label: 'MiMo', command: 'mimo', args: ['auth', 'login', '--provider', 'xiaomi'], guidance: 'Complete Xiaomi sign-in in your browser and choose the plan you want to use.' },
   { id: 'muse', label: 'Meta Muse', command: 'muse', args: [], guidance: 'Run muse, then choose sign-in or enter /login. Exit Muse after signing in.' }
 ]);

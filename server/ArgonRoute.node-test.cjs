@@ -50,7 +50,7 @@ class Response extends EventEmitter {
   }
 }
 
-function harness(t, { readThinking = async () => thinking, resultId = conversationId, events: suppliedEvents, rawOutput, onInput, onHeartbeat } = {}) {
+function harness(t, { readThinking = async () => thinking, resultId = conversationId, model = 'gemini-4-argon-high', events: suppliedEvents, rawOutput, onInput, onHeartbeat } = {}) {
   const testRoot = fs.mkdtempSync(path.join(__dirname, '.argon-route-test-'));
   t.after(() => fs.rmSync(testRoot, { recursive: true, force: true }));
   const req = new EventEmitter();
@@ -72,7 +72,7 @@ function harness(t, { readThinking = async () => thinking, resultId = conversati
       queueMicrotask(() => { onHeartbeat({ req, res }); callback(); });
       return { unref() {} };
     },
-    config: { argon_model: 'gemini-4-argon-high', argon_timeout_ms: 1000 },
+    config: { argon_model: model, argon_timeout_ms: 1000 },
     Logger: { debug() {}, error(...args) { errors.push(args); } },
     async readArgonThinking(...args) {
       reads.push(args);
@@ -248,6 +248,20 @@ test('unexpected startup model is rejected before response streaming begins', as
   assert.match(JSON.parse(current.res.chunks.join('')).error.message, /selected a model other than/);
   assert.deepEqual(current.reads, []);
   current.assertStopped();
+});
+
+test('Carbon requests pass the exact CLI slug and stream the model confirmed by Antigravity', async t => {
+  const model = 'gemini-4-carbon-high';
+  const current = harness(t, { model, events: [
+    { ...initEvent, init: { ...initEvent.init, model: 'Gemini 4 Carbon (High)' } },
+    { event: 'result', result: { status: 'SUCCESS', response: answer } }
+  ] });
+  await current.run(true);
+  const { args } = current.spawned[0];
+  assert.equal(args[args.indexOf('--model') + 1], model);
+  assert.equal(current.res.events()[0].message.model, model);
+  assert.equal(current.res.events().at(-1).type, 'message_stop');
+  current.assertClean();
 });
 
 test('unsuccessful CLI result becomes an SSE error after initialization', async t => {

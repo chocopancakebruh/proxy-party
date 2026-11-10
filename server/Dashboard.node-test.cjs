@@ -132,7 +132,7 @@ test('MiMo model selection persists and appears in status without restarting the
   const { api, configFile } = await setup(context, { mimo_model: 'xiaomi/mimo-v2.6-pro' });
   const before = await (await api('status')).json();
   assert.equal(before.providers.find(provider => provider.id === 'mimo').modelSelection.selected, 'xiaomi/mimo-v2.6-pro');
-  assert.ok(before.providers.filter(provider => !['mimo', 'kimi'].includes(provider.id)).every(provider => !provider.modelSelection));
+  assert.ok(before.providers.filter(provider => !['mimo', 'kimi', 'argon'].includes(provider.id)).every(provider => !provider.modelSelection));
   for (const model of ['xiaomi/mimo-v2.6-flash', 'xiaomi/mimo-v2.6-pro']) {
     const response = await api('providers/mimo/model', { method: 'POST', body: JSON.stringify({ model }) });
     assert.equal(response.status, 200);

@@ -9,6 +9,7 @@ const { parseBody, requestError, validateMessageBody } = require('./HttpRequest'
 const { loginPage, resultPage } = require('./AuthPages');
 const { createDashboard, requireSameOrigin } = require('./Dashboard');
 const { createRequestActivity, markActivityFailure } = require('./RequestActivity');
+const { createAntigravityModels } = require('./AntigravityModels');
 const { createMimoModels } = require('./MimoModels');
 const { createKimiModels, DEFAULT_MODEL: DEFAULT_KIMI_MODEL } = require('./KimiModels');
 const path = require('node:path');
@@ -139,6 +140,7 @@ function createApp(options = {}) {
     account.manager.logout();
   };
 
+  const modelSettings = { config, configFile: options.configFile };
   const dashboard = createDashboard({
     accounts, config, authenticate, sendJson, startLogin, logout, activity, registry, getAccount, profiles,
     removeConnection(id) {
@@ -151,8 +153,9 @@ function createApp(options = {}) {
       profiles.closeConnection(id);
       delete accounts[id];
     },
-    mimoModels: createMimoModels({ config, configFile: options.configFile }),
-    kimiModels: createKimiModels({ config, configFile: options.configFile }),
+    antigravityModels: createAntigravityModels(modelSettings),
+    kimiModels: createKimiModels(modelSettings),
+    mimoModels: createMimoModels(modelSettings),
     getAuthGeneration: account => accountGenerations.get(account.id) || 0,
     async refresh(account) {
       await account.manager.refreshAccessToken();

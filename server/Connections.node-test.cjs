@@ -192,6 +192,32 @@ test('Argon explicitly remains a single system account and cannot silently imper
   assert.equal((await h.api('connections', { provider: 'argon' })).status, 409);
 });
 
+test('Carbon selection persists and reaches the next request on original and re-added Antigravity connections', async t => {
+  const h = await serverFixture(t);
+  const selection = async id => (await (await h.api('status')).json()).providers.find(p => p.id === id).modelSelection;
+  const original = await selection('argon');
+  assert.equal(original.selected, 'gemini-4-argon-high');
+  for (const effort of ['high', 'medium', 'low']) {
+    const model = `gemini-4-carbon-${effort}`;
+    assert.ok(original.options.some(option => option.id === model));
+    assert.equal((await h.api('providers/argon/model', { model })).status, 200);
+    assert.equal((await h.chat('/v1/argon')).status, 200);
+    assert.equal(h.requests.at(-1).options.config.argon_model, model);
+    assert.equal(require('./Config').loadConfig(path.join(h.root, 'config.txt'), {}).argon_model, model);
+  }
+  await h.api('providers/argon/remove', {});
+  const added = await h.add('argon', 'My Gemini account');
+  const route = new URL(added.proxyUrl).pathname;
+  await h.chat(route);
+  const model = 'gemini-4-carbon-high';
+  assert.equal((await h.api(`providers/${added.id}/model`, { model })).status, 200);
+  assert.equal((await h.api(`providers/${added.id}/model`, { model: 'unknown' })).status, 400);
+  assert.equal((await selection(added.id)).selected, model);
+  assert.equal((await h.chat(route)).status, 200);
+  assert.equal(h.requests.at(-1).options.config.argon_model, model);
+  assert.equal(createConnectionRegistry({ filename: h.filename }).get(added.id).settings.model, model);
+});
+
 test('MiMo model changes persist per connection and never alter another account or legacy config', async t => {
   const h = await serverFixture(t);
   const a = await h.add('mimo'), b = await h.add('mimo');

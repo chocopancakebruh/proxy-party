@@ -3,8 +3,6 @@ const path = require('node:path');
 const { isLoopback } = require('./Config');
 const { parseBody, requestError } = require('./HttpRequest');
 const { providerDefinition, connectionPath } = require('./ConnectionRegistry');
-const { MODELS } = require('./MimoModels');
-const { MODELS: KIMI_MODELS, getKimiSelection } = require('./KimiModels');
 
 const ASSETS = Object.freeze({
   '/dashboard/': ['index.html', 'text/html; charset=utf-8'],
@@ -33,21 +31,16 @@ function requireSameOrigin(req) {
   }
 }
 
-function createDashboard({ config, authenticate, sendJson, startLogin, logout, refresh, getAuthGeneration, activity, mimoModels, kimiModels,
+function createDashboard({ config, authenticate, sendJson, startLogin, logout, refresh, getAuthGeneration, activity, mimoModels, kimiModels, antigravityModels,
   registry, getAccount, profiles, removeConnection }) {
   const assets = new Map();
+  const modelPickers = { mimo: mimoModels, kimi: kimiModels, argon: antigravityModels };
   function description(connection, baseUrl) {
     const { handler, ...definition } = providerDefinition(connection.provider);
     return { ...definition, id: connection.id, provider: connection.provider, label: connection.label,
       legacy: connection.legacy, canRemove: true, proxyUrl: `${baseUrl}${connectionPath(connection)}`,
-      detail: !definition.independentAccounts ? 'Uses the system Argon sign-in · one connection'
+      detail: !definition.independentAccounts ? 'Uses the system Antigravity sign-in · one connection'
         : connection.legacy && definition.kind === 'cli' ? 'Uses your existing local CLI account' : 'An independent account for this connection' };
-  }
-  function modelSelection(connection) {
-    if (connection.provider === 'kimi') return getKimiSelection(profiles.get(connection).config);
-    const model = profiles.get(connection).config.mimo_model;
-    return { selected: MODELS.some(option => option.id === model) ? model : null,
-      custom: Boolean(model) && !MODELS.some(option => option.id === model), options: MODELS };
   }
 
   return async function handleDashboard(req, res, pathname) {
@@ -97,9 +90,9 @@ function createDashboard({ config, authenticate, sendJson, startLogin, logout, r
         const account = getAccount(connection);
         const status = account ? { ...account.manager.getStatus(), authGeneration: getAuthGeneration(account), loginRunning: false }
           : (await profiles.auth(connection).getStatuses({ force, providerId: connection.provider })).find(item => item.id === connection.provider);
+        const picker = modelPickers[connection.provider];
         return { ...status, ...description(connection, baseUrl),
-          ...(['mimo', 'kimi'].includes(connection.provider) ? { modelSelection: connection.legacy
-            ? (connection.provider === 'kimi' ? kimiModels : mimoModels).getSelection() : modelSelection(connection) } : {}) };
+          ...(picker ? { modelSelection: picker.getSelection(connection.legacy ? config : profiles.get(connection).config) } : {}) };
       }));
       sendJson(res, 200, { providers: providers.filter(provider => registry.get(provider.id)), catalog: registry.catalog(), server: { baseUrl } });
       return true;
@@ -116,19 +109,19 @@ function createDashboard({ config, authenticate, sendJson, startLogin, logout, r
       return true;
     }
     if (action === 'model') {
-      if (!['mimo', 'kimi'].includes(connection.provider)) throw requestError('Model selection is unavailable for this provider');
-      const isKimi = connection.provider === 'kimi';
-      const models = isKimi ? KIMI_MODELS : MODELS;
+      const picker = modelPickers[connection.provider];
+      if (!picker) throw requestError('Model selection is unavailable for this provider');
       const body = await parseBody(req, { ...config, max_body_bytes: 1024 });
-      if (!models.some(model => model.id === body.model)) throw requestError(isKimi ? 'Choose a Kimi model from the list.' : 'Choose MiMo v2.6 Pro or MiMo v2.6 Flash.');
       let selection;
-      if (connection.legacy) selection = (isKimi ? kimiModels : mimoModels).select(body.model);
+      if (connection.legacy) selection = picker.select(body.model);
       else {
+        picker.validate(body.model);
         registry.setModel(providerId, body.model);
-        profiles.get(connection).config[`${connection.provider}_model`] = body.model;
-        selection = modelSelection(connection);
+        const settings = profiles.get(connection).config;
+        settings[`${connection.provider}_model`] = body.model;
+        selection = picker.getSelection(settings);
       }
-      sendJson(res, 200, { modelSelection: selection, message: `${isKimi ? 'Kimi' : 'MiMo'} model saved. New requests use this model; no restart needed.` });
+      sendJson(res, 200, { modelSelection: selection, message: `${picker.label} model saved. New requests use this model; no restart needed.` });
       return true;
     }
     const account = getAccount(connection);

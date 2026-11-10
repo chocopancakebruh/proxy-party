@@ -9,7 +9,7 @@ const CATALOG = Object.freeze([
   { id: 'kimi', label: 'Kimi', kind: 'cli', mark: 'K', short: 'MOONSHOT AI', handler: 'handleKimiRequest' },
   { id: 'codex', label: 'Codex', kind: 'cli', mark: '>_', short: 'OPENAI', handler: 'handleCodexRequest' },
   { id: 'grok', label: 'Grok', kind: 'cli', mark: 'G', short: 'XAI', handler: 'handleGrokRequest' },
-  { id: 'argon', label: 'Argon', kind: 'cli', mark: 'Ar', short: 'ARGON', handler: 'handleArgonRequest' },
+  { id: 'argon', label: 'Antigravity', kind: 'cli', mark: 'G', short: 'GOOGLE GEMINI', handler: 'handleArgonRequest' },
   { id: 'mimo', label: 'MiMo', kind: 'cli', mark: 'Mi', short: 'XIAOMI', handler: 'handleMimoRequest' },
   { id: 'muse', label: 'Meta Muse', kind: 'cli', mark: 'M', short: 'META', handler: 'handleMuseRequest' }
 ].map(provider => Object.freeze({ ...provider, independentAccounts: provider.id !== 'argon' })));
@@ -76,7 +76,7 @@ function createConnectionRegistry({ filename, profilesDir = path.join(__dirname,
     list: () => connections.map(copy), get,
     catalog: () => CATALOG.map(({ handler, ...provider }) => ({ ...provider,
       canAdd: provider.independentAccounts || !connections.some(connection => connection.provider === provider.id),
-      ...(provider.independentAccounts ? {} : { accountNote: 'Uses the system Argon sign-in. Only one connection is supported.' }) })),
+      ...(provider.independentAccounts ? {} : { accountNote: 'Gemini 4 Carbon and Argon. One connection uses this computer’s Antigravity sign-in.' }) })),
     profileDir(id) {
       if (!isConnectionId(id)) throw requestError('Unknown connection', 404);
       return path.join(profilesDir, id);
@@ -85,7 +85,7 @@ function createConnectionRegistry({ filename, profilesDir = path.join(__dirname,
       const definition = providerDefinition(provider);
       if (!definition) throw requestError('Choose a supported provider');
       if (!definition.independentAccounts && connections.some(connection => connection.provider === provider)) {
-        throw requestError('Argon uses a shared system sign-in. Independent Argon subscriptions are not supported by this adapter.', 409);
+        throw requestError('Antigravity uses a shared system sign-in. Independent Antigravity subscriptions are not supported by this adapter.', 409);
       }
       if (label !== undefined && (typeof label !== 'string' || label.length > 80 || /[\x00-\x1f\x7f]/.test(label))) throw requestError('Use a name of at most 80 characters');
       let number = 1;
